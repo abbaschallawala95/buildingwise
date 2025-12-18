@@ -9,6 +9,7 @@ import {
   QuerySnapshot,
   CollectionReference,
   collectionGroup,
+  Firestore,
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -39,6 +40,11 @@ export interface InternalQuery extends Query<DocumentData> {
   }
 }
 
+// A type guard to check if a query is a CollectionGroup
+function isCollectionGroupQuery(query: any): query is { firestore: Firestore, _query: { path: { segments: string[] } } } {
+    return query && query._query && Array.isArray(query._query.path.segments) && query._query.path.segments.length % 2 === 1;
+}
+
 /**
  * React hook to subscribe to a Firestore collection or query in real-time.
  * Handles nullable references/queries.
@@ -60,15 +66,13 @@ export function useCollection<T = any>(
   type StateDataType = ResultItemType[] | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
   const firestore = useFirestore();
 
   useEffect(() => {
-    if (!memoizedTargetRefOrQuery) {
-      setData(null);
-      setIsLoading(false);
-      setError(null);
+    if (!memoizedTargetRefOrQuery || !firestore) {
+      setIsLoading(!firestore); // Still loading if firestore is not ready
       return;
     }
 
@@ -76,17 +80,14 @@ export function useCollection<T = any>(
     setError(null);
 
     let finalQuery: Query<DocumentData>;
-    if ('converter' in memoizedTargetRefOrQuery) {
-      finalQuery = memoizedTargetRefOrQuery as Query<DocumentData>;
-    } else if (firestore) {
-      finalQuery = collectionGroup(firestore, (memoizedTargetRefOrQuery as any).path) as Query<DocumentData>;
+    
+    // This handles the case where collectionGroup is passed a null firestore instance initially
+    if (memoizedTargetRefOrQuery.type === 'collection-group' && (memoizedTargetRefOrQuery as any)._query.path.segments.length === 0) {
+        finalQuery = collectionGroup(firestore, (memoizedTargetRefOrQuery as any)._query.collectionId);
     } else {
-      setIsLoading(false);
-      return;
+        finalQuery = memoizedTargetRefOrQuery;
     }
 
-
-    // Directly use memoizedTargetRefOrQuery as it's assumed to be the final query
     const unsubscribe = onSnapshot(
       finalQuery,
       (snapshot: QuerySnapshot<DocumentData>) => {
@@ -120,11 +121,11 @@ export function useCollection<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery, firestore]); // Re-run if the target query/reference changes.
+  }, [memoizedTargetRefOrQuery, firestore]); // Re-run if the target query/reference or firestore changes.
+  
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
-    if(memoizedTargetRefOrQuery.type !== 'collection-group') {
       throw new Error('Passed query was not properly memoized using useMemoFirebase');
-    }
   }
+
   return { data, isLoading, error };
 }
