@@ -38,8 +38,11 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       onPointerDownOutside={(e) => {
-        const target = e.target as HTMLElement;
-        if (target.closest('[data-radix-popper-content-wrapper]')) {
+        if (
+          e.target instanceof HTMLElement &&
+          (e.target.closest('[data-radix-popper-content-wrapper]') ||
+           e.target.closest('.rdp'))
+        ) {
           e.preventDefault();
         }
       }}
