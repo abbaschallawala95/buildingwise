@@ -45,6 +45,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { MemberForm } from '@/components/members/MemberForm';
+import type { Transaction } from '../transactions/page';
 
 export type Member = {
   id: string;
@@ -55,6 +56,9 @@ export type Member = {
   contactNumber: string;
   monthlyMaintenance: number;
   previousDues: number;
+  maintenanceStartDate: any; // Firestore Timestamp
+  maintenanceEndDate?: any; // Firestore Timestamp
+  monthlyDueDate: number; // Day of the month
   createdAt?: any;
 };
 
@@ -71,12 +75,16 @@ export default function MembersPage() {
     [firestore]
   );
   
-  // Fetch all members from all buildings using a collection group query.
   const membersCollectionGroup = useMemoFirebase(
     () => (firestore ? collectionGroup(firestore, 'members') : null),
     [firestore]
   );
   
+  const transactionsCollectionGroup = useMemoFirebase(
+    () => (firestore ? collectionGroup(firestore, 'transactions') : null),
+    [firestore]
+  );
+
   const {
     data: buildings,
     isLoading: isLoadingBuildings,
@@ -88,7 +96,12 @@ export default function MembersPage() {
     error 
   } = useCollection<Member>(membersCollectionGroup);
 
-  const isLoading = isLoadingBuildings || isLoadingMembers;
+  const {
+    data: transactions,
+    isLoading: isLoadingTransactions,
+  } = useCollection<Transaction>(transactionsCollectionGroup);
+
+  const isLoading = isLoadingBuildings || isLoadingMembers || isLoadingTransactions;
 
   const handleAdd = () => {
     setSelectedMember(undefined);
@@ -107,7 +120,6 @@ export default function MembersPage() {
 
   const handleDelete = () => {
     if (firestore && memberToDelete) {
-      // Members are in a subcollection, so we need the buildingId
       const docRef = doc(firestore, 'buildings', memberToDelete.buildingId, 'members', memberToDelete.id);
       deleteDocumentNonBlocking(docRef);
       setDeleteDialogOpen(false);
@@ -125,6 +137,50 @@ export default function MembersPage() {
   const getBuildingName = (buildingId: string) => {
     return buildings?.find(b => b.id === buildingId)?.buildingName || '...';
   }
+
+  const calculateTotalDues = (member: Member) => {
+    const memberTransactions = transactions?.filter(t => t.memberId === member.id && t.type === 'maintenance') || [];
+    
+    let totalDues = member.previousDues || 0;
+    
+    const startDate = member.maintenanceStartDate.toDate();
+    const endDate = member.maintenanceEndDate ? member.maintenanceEndDate.toDate() : new Date();
+    const today = new Date();
+
+    // Iterate from start month to current month
+    let currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+    
+    while (currentDate <= endDate) {
+        const dueDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), member.monthlyDueDate);
+        
+        // If due date for this month has passed
+        if (today > dueDate) {
+            const monthYearString = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+            
+            // Check if payment was made for this month
+            const paidForMonth = memberTransactions.some(t => t.month.toLowerCase() === monthYearString.toLowerCase());
+
+            if (!paidForMonth) {
+                totalDues += member.monthlyMaintenance;
+            }
+        }
+        
+        currentDate.setMonth(currentDate.getMonth() + 1);
+    }
+
+    // Subtract paid amounts
+    const totalPaid = memberTransactions.reduce((acc, t) => acc + t.amount, 0);
+    // This simple subtraction is not quite right if a member overpays, but it's a start.
+    // A more complex ledger system would be needed for full accuracy.
+    // For now, let's adjust totalDues based on payments vs expected payments.
+    const expectedPaid = totalDues - member.previousDues;
+    const actualPaid = memberTransactions.reduce((acc, t) => acc + t.amount, 0);
+    const duesAfterPayments = totalDues - actualPaid;
+
+
+    return duesAfterPayments > 0 ? duesAfterPayments : 0;
+  };
+
 
   const sortedMembers = useMemo(() => {
     if (!members) return [];
@@ -190,34 +246,37 @@ export default function MembersPage() {
               )}
               {!isLoading &&
                 !error &&
-                sortedMembers.map((member) => (
-                  <TableRow key={member.id}>
-                    <TableCell className="font-medium">{member.fullName}</TableCell>
-                    <TableCell>{getBuildingName(member.buildingId)}</TableCell>
-                    <TableCell>{member.flatNumber}</TableCell>
-                    <TableCell>{formatCurrency(member.monthlyMaintenance)}</TableCell>
-                    <TableCell>
-                      <Badge variant={member.previousDues > 0 ? 'destructive' : 'secondary'}>
-                        {formatCurrency(member.previousDues)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button aria-haspopup="true" size="icon" variant="ghost">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => handleEdit(member)}>Edit</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openDeleteDialog(member)} className="text-destructive">Delete</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                sortedMembers.map((member) => {
+                  const totalDues = calculateTotalDues(member);
+                  return (
+                    <TableRow key={member.id}>
+                      <TableCell className="font-medium">{member.fullName}</TableCell>
+                      <TableCell>{getBuildingName(member.buildingId)}</TableCell>
+                      <TableCell>{member.flatNumber}</TableCell>
+                      <TableCell>{formatCurrency(member.monthlyMaintenance)}</TableCell>
+                      <TableCell>
+                        <Badge variant={totalDues > 0 ? 'destructive' : 'secondary'}>
+                          {formatCurrency(totalDues)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button aria-haspopup="true" size="icon" variant="ghost">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Toggle menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => handleEdit(member)}>Edit</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openDeleteDialog(member)} className="text-destructive">Delete</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               {!isLoading && !error && sortedMembers.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground">

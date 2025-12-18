@@ -69,6 +69,20 @@
           "type": "number",
           "description": "Any previous outstanding dues of the member."
         },
+        "maintenanceStartDate": {
+          "type": "string",
+          "description": "The date when maintenance charges start for the member.",
+          "format": "date-time"
+        },
+        "maintenanceEndDate": {
+          "type": "string",
+          "description": "The date when maintenance charges end for the member.",
+          "format": "date-time"
+        },
+        "monthlyDueDate": {
+          "type": "number",
+          "description": "The day of the month when the maintenance payment is due."
+        },
         "createdAt": {
           "type": "string",
           "description": "Timestamp indicating when the member was added.",
@@ -84,6 +98,8 @@
         "contactNumber",
         "monthlyMaintenance",
         "previousDues",
+        "maintenanceStartDate",
+        "monthlyDueDate",
         "createdAt"
       ]
     },

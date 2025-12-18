@@ -1,15 +1,18 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useForm, type SubmitHandler } from 'react-hook-form';
+import { useForm, type SubmitHandler, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
   collection,
   doc,
   serverTimestamp,
+  Timestamp,
 } from 'firebase/firestore';
 import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 import {
   Dialog,
@@ -23,8 +26,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CalendarIcon } from 'lucide-react';
 
 import type { Member } from '@/app/(app)/members/page';
 import type { Building } from '@/app/(app)/buildings/page';
@@ -37,6 +42,9 @@ const memberSchema = z.object({
   contactNumber: z.string().min(10, 'Contact number must be at least 10 digits.'),
   monthlyMaintenance: z.coerce.number().min(0, 'Maintenance cannot be negative.'),
   previousDues: z.coerce.number().min(0, 'Dues cannot be negative.'),
+  maintenanceStartDate: z.date({ required_error: 'Start date is required.'}),
+  maintenanceEndDate: z.date().optional(),
+  monthlyDueDate: z.coerce.number().min(1, 'Due date must be between 1 and 28.').max(28, 'Due date must be between 1 and 28.'),
 });
 
 type MemberFormValues = z.infer<typeof memberSchema>;
@@ -56,13 +64,13 @@ export function MemberForm({ isOpen, setIsOpen, member, buildings }: MemberFormP
     handleSubmit,
     reset,
     control,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<MemberFormValues>({
     resolver: zodResolver(memberSchema),
     defaultValues: {
         monthlyMaintenance: 0,
         previousDues: 0,
+        monthlyDueDate: 10,
     }
   });
 
@@ -77,6 +85,9 @@ export function MemberForm({ isOpen, setIsOpen, member, buildings }: MemberFormP
             contactNumber: member.contactNumber,
             monthlyMaintenance: member.monthlyMaintenance,
             previousDues: member.previousDues,
+            maintenanceStartDate: member.maintenanceStartDate.toDate ? member.maintenanceStartDate.toDate() : new Date(member.maintenanceStartDate),
+            maintenanceEndDate: member.maintenanceEndDate?.toDate ? member.maintenanceEndDate.toDate() : undefined,
+            monthlyDueDate: member.monthlyDueDate,
           });
         } else {
           reset({
@@ -87,6 +98,9 @@ export function MemberForm({ isOpen, setIsOpen, member, buildings }: MemberFormP
             contactNumber: '',
             monthlyMaintenance: 0,
             previousDues: 0,
+            maintenanceStartDate: new Date(),
+            maintenanceEndDate: undefined,
+            monthlyDueDate: 10,
           });
         }
     }
@@ -101,21 +115,31 @@ export function MemberForm({ isOpen, setIsOpen, member, buildings }: MemberFormP
       });
       return;
     }
+    
+    const dataToSave: any = {
+      ...data,
+      maintenanceStartDate: Timestamp.fromDate(data.maintenanceStartDate),
+    };
+    
+    if (data.maintenanceEndDate) {
+        dataToSave.maintenanceEndDate = Timestamp.fromDate(data.maintenanceEndDate);
+    } else {
+        dataToSave.maintenanceEndDate = null;
+    }
+
 
     try {
       if (member) {
-        // Update existing member
         const docRef = doc(firestore, 'buildings', member.buildingId, 'members', member.id);
-        updateDocumentNonBlocking(docRef, data);
+        updateDocumentNonBlocking(docRef, dataToSave);
         toast({
           title: 'Success',
           description: 'Member updated successfully.',
         });
       } else {
-        // Add new member to the subcollection of the selected building
         const collectionRef = collection(firestore, 'buildings', data.buildingId, 'members');
         addDocumentNonBlocking(collectionRef, {
-            ...data,
+            ...dataToSave,
             createdAt: serverTimestamp(),
         });
         toast({
@@ -135,7 +159,7 @@ export function MemberForm({ isOpen, setIsOpen, member, buildings }: MemberFormP
   
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-2xl">
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
             <DialogTitle>{member ? 'Edit Member' : 'Add New Member'}</DialogTitle>
@@ -143,25 +167,31 @@ export function MemberForm({ isOpen, setIsOpen, member, buildings }: MemberFormP
               {member ? 'Update the details of the member.' : 'Fill in the information for the new member.'}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-6 pl-1">
             <div className="grid gap-2">
                 <Label htmlFor="buildingId">Building</Label>
-                <Select
-                    onValueChange={(value) => setValue('buildingId', value)}
-                    defaultValue={member?.buildingId}
-                    disabled={!!member} // Disable if editing
-                >
-                    <SelectTrigger>
+                <Controller
+                  name="buildingId"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      disabled={!!member}
+                    >
+                      <SelectTrigger>
                         <SelectValue placeholder="Select a building" />
-                    </SelectTrigger>
-                    <SelectContent>
+                      </SelectTrigger>
+                      <SelectContent>
                         {buildings.map((building) => (
-                        <SelectItem key={building.id} value={building.id}>
+                          <SelectItem key={building.id} value={building.id}>
                             {building.buildingName}
-                        </SelectItem>
+                          </SelectItem>
                         ))}
-                    </SelectContent>
-                </Select>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
                 {errors.buildingId && <p className="text-sm text-destructive">{errors.buildingId.message}</p>}
             </div>
             <div className="grid gap-2">
@@ -193,13 +223,67 @@ export function MemberForm({ isOpen, setIsOpen, member, buildings }: MemberFormP
                     {errors.monthlyMaintenance && <p className="text-sm text-destructive">{errors.monthlyMaintenance.message}</p>}
                 </div>
                 <div className="grid gap-2">
-                    <Label htmlFor="previousDues">Previous Dues</Label>
+                    <Label htmlFor="previousDues">Opening Dues</Label>
                     <Input id="previousDues" type="number" {...register('previousDues')} />
                     {errors.previousDues && <p className="text-sm text-destructive">{errors.previousDues.message}</p>}
                 </div>
             </div>
+            <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                    <Label>Maintenance Start Date</Label>
+                    <Controller
+                        name="maintenanceStartDate"
+                        control={control}
+                        render={({ field }) => (
+                             <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant={"outline"}
+                                    className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}
+                                  >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0">
+                                  <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                                </PopoverContent>
+                              </Popover>
+                        )}
+                    />
+                    {errors.maintenanceStartDate && <p className="text-sm text-destructive">{errors.maintenanceStartDate.message}</p>}
+                </div>
+                 <div className="grid gap-2">
+                    <Label>Maintenance End Date (Optional)</Label>
+                    <Controller
+                        name="maintenanceEndDate"
+                        control={control}
+                        render={({ field }) => (
+                             <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant={"outline"}
+                                    className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}
+                                  >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0">
+                                  <Calendar mode="single" selected={field.value} onSelect={field.onChange} />
+                                </PopoverContent>
+                              </Popover>
+                        )}
+                    />
+                </div>
+            </div>
+             <div className="grid gap-2">
+                <Label htmlFor="monthlyDueDate">Monthly Due Date (Day of Month)</Label>
+                <Input id="monthlyDueDate" type="number" {...register('monthlyDueDate')} />
+                {errors.monthlyDueDate && <p className="text-sm text-destructive">{errors.monthlyDueDate.message}</p>}
+            </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="mt-4">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
               Cancel
             </Button>
