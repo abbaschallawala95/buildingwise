@@ -2,12 +2,12 @@
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { FirebaseClientProvider, useUser } from '@/firebase';
+import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 
-function AppContent({ children }: { children: React.ReactNode }) {
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
 
@@ -37,14 +37,5 @@ function AppContent({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     </SidebarProvider>
-  );
-}
-
-
-export default function AppLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <FirebaseClientProvider>
-      <AppContent>{children}</AppContent>
-    </FirebaseClientProvider>
   );
 }
