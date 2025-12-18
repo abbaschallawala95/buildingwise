@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { collection, serverTimestamp, doc } from 'firebase/firestore';
 import { useFirestore, useCollection, addDocumentNonBlocking, useMemoFirebase } from '@/firebase';
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,11 +27,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { generatePersonalizedReceiptMessage } from "@/ai/flows/generate-personalized-receipt-message";
-import { Loader2, Wand2 } from "lucide-react";
+import { Loader2, Wand2, CalendarIcon } from "lucide-react";
 import type { Building } from "@/app/(app)/buildings/page";
 import type { Member } from "@/app/(app)/members/page";
 import type { Transaction } from "@/app/(app)/transactions/page";
@@ -38,13 +42,13 @@ const maintenanceSchema = z.object({
   buildingId: z.string().min(1, "Please select a building."),
   memberId: z.string().min(1, "Please select a member."),
   amount: z.coerce.number().min(1, "Amount must be greater than 0."),
-  month: z.string().min(3, "Month is required e.g. July 2024."),
+  month: z.date({ required_error: "Month is required."}),
   paymentMode: z.enum(["Cash", "Online", "Cheque"]),
 });
 
 type MaintenanceFormValues = z.infer<typeof maintenanceSchema>;
 
-type ReceiptData = Transaction;
+type ReceiptData = Omit<Transaction, 'month'> & { month: Date };
 
 export function MaintenanceForm() {
   const firestore = useFirestore();
@@ -60,11 +64,13 @@ export function MaintenanceForm() {
     setValue,
     reset,
     formState: { errors, isSubmitting },
+    control,
   } = useForm<MaintenanceFormValues>({
     resolver: zodResolver(maintenanceSchema),
   });
 
   const buildingId = watch("buildingId");
+  const month = watch("month");
 
   const buildingsCollection = useMemoFirebase(
     () => (firestore ? collection(firestore, 'buildings') : null),
@@ -84,7 +90,7 @@ export function MaintenanceForm() {
     const receiptNumber = `R-${new Date().getFullYear()}${Math.floor(Math.random() * 9000) + 1000}`;
     const transactionData = {
       ...data,
-      id: '', // will be set by firestore
+      month: format(data.month, 'MMMM yyyy'), // Store as string
       type: 'maintenance' as const,
       title: 'Monthly Maintenance',
       receiptNumber: receiptNumber,
@@ -94,7 +100,7 @@ export function MaintenanceForm() {
     const collectionRef = collection(firestore, 'buildings', data.buildingId, 'transactions');
     try {
       const docRef = await addDocumentNonBlocking(collectionRef, transactionData);
-      setReceiptData({ ...transactionData, id: docRef ? docRef.id : '' });
+      setReceiptData({ ...transactionData, id: docRef ? docRef.id : '', month: data.month });
       toast({
         title: "Success!",
         description: "Maintenance payment recorded successfully.",
@@ -122,7 +128,7 @@ export function MaintenanceForm() {
         memberName: member?.fullName || "Valued Member",
         flatNumber: member?.flatNumber || "",
         amount: receiptData.amount,
-        month: receiptData.month,
+        month: format(receiptData.month, 'MMMM yyyy'),
         receiptNumber: receiptData.receiptNumber,
         paymentMode: receiptData.paymentMode,
       });
@@ -247,7 +253,28 @@ export function MaintenanceForm() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="month">For Month</Label>
-              <Input id="month" {...register("month")} placeholder="e.g. July 2024" />
+               <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !month && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {month ? format(month, "MMMM yyyy") : <span>Pick a month</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={month}
+                      onSelect={(date) => setValue('month', date as Date)}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               {errors.month && <p className="text-sm text-destructive">{errors.month.message}</p>}
             </div>
           </div>
