@@ -22,7 +22,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Logo } from '../icons';
 
@@ -39,6 +39,7 @@ export function AppHeader() {
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="flex flex-col">
+        <SheetTitle className="sr-only">Mobile Navigation</SheetTitle>
           <nav className="grid gap-2 text-lg font-medium">
             <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold mb-4">
               <Logo />
