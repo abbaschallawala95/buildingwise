@@ -85,7 +85,9 @@ export function MemberForm({ isOpen, setIsOpen, member, buildings }: MemberFormP
             contactNumber: member.contactNumber,
             monthlyMaintenance: member.monthlyMaintenance,
             previousDues: member.previousDues,
-            maintenanceStartDate: member.maintenanceStartDate.toDate ? member.maintenanceStartDate.toDate() : new Date(member.maintenanceStartDate),
+            maintenanceStartDate: member.maintenanceStartDate 
+              ? (member.maintenanceStartDate.toDate ? member.maintenanceStartDate.toDate() : new Date(member.maintenanceStartDate))
+              : new Date(),
             maintenanceEndDate: member.maintenanceEndDate?.toDate ? member.maintenanceEndDate.toDate() : undefined,
             monthlyDueDate: member.monthlyDueDate,
           });
