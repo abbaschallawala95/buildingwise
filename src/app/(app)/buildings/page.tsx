@@ -1,15 +1,13 @@
 'use client';
 
-import { useMemo } from 'react';
-import { PlusCircle } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { PlusCircle, MoreHorizontal } from 'lucide-react';
 import {
   collection,
-  query,
-  where,
-  getDocs,
-  getCountFromServer,
+  doc,
 } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -27,11 +25,42 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { PageHeader } from '@/components/PageHeader';
 import { Skeleton } from '@/components/ui/skeleton';
+import { BuildingForm } from '@/components/buildings/BuildingForm';
+
+// Define the shape of a building object
+export type Building = {
+  id: string;
+  buildingName: string;
+  address: string;
+  createdAt?: any;
+};
 
 export default function BuildingsPage() {
   const firestore = useFirestore();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedBuilding, setSelectedBuilding] = useState<Building | undefined>(undefined);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [buildingToDelete, setBuildingToDelete] = useState<Building | null>(null);
 
   const buildingsCollection = useMemoFirebase(
     () => (firestore ? collection(firestore, 'buildings') : null),
@@ -42,42 +71,49 @@ export default function BuildingsPage() {
     data: buildings,
     isLoading,
     error,
-  } = useCollection(buildingsCollection);
+  } = useCollection<Building>(buildingsCollection);
 
-  const BuildingRow = ({ building }: { building: any }) => {
-    const [memberCount, setMemberCount] = React.useState(0);
-    const [loading, setLoading] = React.useState(true);
-
-    React.useEffect(() => {
-      if (!firestore) return;
-      const membersCol = collection(
-        firestore,
-        `buildings/${building.id}/members`
-      );
-      getCountFromServer(membersCol).then((snapshot) => {
-        setMemberCount(snapshot.data().count);
-        setLoading(false);
-      });
-    }, [firestore, building.id]);
-
-    return (
-      <TableRow key={building.id}>
-        <TableCell className="font-medium">{building.buildingName}</TableCell>
-        <TableCell>{building.address}</TableCell>
-        <TableCell>{loading ? <Skeleton className="h-4 w-8" /> : memberCount}</TableCell>
-        <TableCell>
-          <Button variant="outline" size="sm">
-            Edit
-          </Button>
-        </TableCell>
-      </TableRow>
-    );
+  const handleAdd = () => {
+    setSelectedBuilding(undefined);
+    setDialogOpen(true);
   };
 
+  const handleEdit = (building: Building) => {
+    setSelectedBuilding(building);
+    setDialogOpen(true);
+  };
+
+  const openDeleteDialog = (building: Building) => {
+    setBuildingToDelete(building);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDelete = () => {
+    if (firestore && buildingToDelete) {
+      const docRef = doc(firestore, 'buildings', buildingToDelete.id);
+      deleteDocumentNonBlocking(docRef);
+      setDeleteDialogOpen(false);
+      setBuildingToDelete(null);
+    }
+  };
+
+  const sortedBuildings = useMemo(() => {
+    if (!buildings) return [];
+    // Sort by createdAt, assuming it's a Firestore Timestamp or a value that can be compared
+    return [...buildings].sort((a, b) => {
+      if (a.createdAt && b.createdAt) {
+        // Assuming createdAt is a Firestore Timestamp
+        if (a.createdAt.seconds < b.createdAt.seconds) return 1;
+        if (a.createdAt.seconds > b.createdAt.seconds) return -1;
+      }
+      return 0;
+    });
+  }, [buildings]);
+  
   return (
     <>
       <PageHeader title="Buildings">
-        <Button size="sm" className="gap-1">
+        <Button size="sm" className="gap-1" onClick={handleAdd}>
           <PlusCircle className="h-3.5 w-3.5" />
           <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
             Add Building
@@ -95,7 +131,6 @@ export default function BuildingsPage() {
               <TableRow>
                 <TableHead>Building Name</TableHead>
                 <TableHead>Address</TableHead>
-                <TableHead>Members</TableHead>
                 <TableHead>
                   <span className="sr-only">Actions</span>
                 </TableHead>
@@ -112,21 +147,15 @@ export default function BuildingsPage() {
                       <Skeleton className="h-4 w-[300px]" />
                     </TableCell>
                     <TableCell>
-                      <Skeleton className="h-4 w-[50px]" />
-                    </TableCell>
-                    <TableCell>
                       <Skeleton className="h-9 w-[50px]" />
                     </TableCell>
                   </TableRow>
-                  <TableRow>
+                   <TableRow>
                     <TableCell>
                       <Skeleton className="h-4 w-[200px]" />
                     </TableCell>
                     <TableCell>
                       <Skeleton className="h-4 w-[250px]" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-[50px]" />
                     </TableCell>
                     <TableCell>
                       <Skeleton className="h-9 w-[50px]" />
@@ -136,19 +165,38 @@ export default function BuildingsPage() {
               )}
               {error && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-destructive">
+                  <TableCell colSpan={3} className="text-center text-destructive">
                     Error loading buildings: {error.message}
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading &&
                 !error &&
-                buildings?.map((building) => (
-                  <BuildingRow key={building.id} building={building} />
+                sortedBuildings.map((building) => (
+                  <TableRow key={building.id}>
+                    <TableCell className="font-medium">{building.buildingName}</TableCell>
+                    <TableCell>{building.address}</TableCell>
+                    <TableCell className="text-right">
+                       <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleEdit(building)}>Edit</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openDeleteDialog(building)} className="text-destructive">Delete</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              {!isLoading && !error && buildings?.length === 0 && (
+              {!isLoading && !error && sortedBuildings?.length === 0 && (
                  <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                    <TableCell colSpan={3} className="text-center text-muted-foreground">
                         No buildings found. Click &quot;Add Building&quot; to get started.
                     </TableCell>
                  </TableRow>
@@ -157,6 +205,27 @@ export default function BuildingsPage() {
           </Table>
         </CardContent>
       </Card>
+      
+      <BuildingForm 
+        isOpen={dialogOpen}
+        setIsOpen={setDialogOpen}
+        building={selectedBuilding}
+      />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the building and all associated data (members, transactions, etc.).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
