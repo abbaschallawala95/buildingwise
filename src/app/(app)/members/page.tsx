@@ -139,6 +139,11 @@ export default function MembersPage() {
   }
 
   const calculateTotalDues = (member: Member) => {
+    // If no start date, we can't calculate monthly dues. Return only previous dues.
+    if (!member.maintenanceStartDate) {
+      return member.previousDues || 0;
+    }
+      
     const memberTransactions = transactions?.filter(t => t.memberId === member.id && t.type === 'maintenance') || [];
     
     let totalDues = member.previousDues || 0;
@@ -150,7 +155,7 @@ export default function MembersPage() {
     // Iterate from start month to current month
     let currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
     
-    while (currentDate <= endDate) {
+    while (currentDate <= endDate && currentDate <= today) {
         const dueDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), member.monthlyDueDate);
         
         // If due date for this month has passed
@@ -158,7 +163,7 @@ export default function MembersPage() {
             const monthYearString = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
             
             // Check if payment was made for this month
-            const paidForMonth = memberTransactions.some(t => t.month.toLowerCase() === monthYearString.toLowerCase());
+            const paidForMonth = memberTransactions.some(t => t.month && t.month.toLowerCase() === monthYearString.toLowerCase());
 
             if (!paidForMonth) {
                 totalDues += member.monthlyMaintenance;
@@ -169,11 +174,8 @@ export default function MembersPage() {
     }
 
     // Subtract paid amounts
-    const totalPaid = memberTransactions.reduce((acc, t) => acc + t.amount, 0);
     // This simple subtraction is not quite right if a member overpays, but it's a start.
     // A more complex ledger system would be needed for full accuracy.
-    // For now, let's adjust totalDues based on payments vs expected payments.
-    const expectedPaid = totalDues - member.previousDues;
     const actualPaid = memberTransactions.reduce((acc, t) => acc + t.amount, 0);
     const duesAfterPayments = totalDues - actualPaid;
 
