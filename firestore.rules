@@ -1,0 +1,161 @@
+/**
+ * This ruleset enforces a security model centered around buildings, where all
+ * data such as members, transactions, and expenses are nested under a specific
+ * building. The primary goal is to enable rapid prototyping by allowing any
+ * authenticated user to manage the data within any building, while leaving a
+ * critical security placeholder for future implementation of building ownership.
+ *
+ * Core Philosophy:
+ * The rules require a user to be authenticated to perform any write operations
+ * (create, update, delete). Read operations on the list of buildings are public,
+ * but reading the details within a building (like members or expenses) requires
+ * authentication.
+ *
+ * Data Structure:
+ * All data is hierarchically organized under the /buildings/{buildingId} path.
+ * Subcollections like 'members', 'transactions', and 'expenses' exist within
+ * each building document. This structure scopes data access naturally.
+ *
+ * Key Security Decisions:
+ * - Authenticated Writes: All create, update, and delete operations across the
+ *   database require the user to be signed in. This prevents anonymous data
+ *   manipulation.
+ * - Public Building Directory: The top-level list of buildings is publicly
+ *   readable, but their contents are not.
+ * - Building Ownership TODO: A critical security measure for building ownership
+ *   is currently missing. The 'Building' entity lacks an 'ownerId' field.
+ *   Therefore, updating or deleting a building is disabled until this is added.
+ *   This is a deliberate, secure placeholder.
+ * - Relational Integrity: Rules on subcollections enforce that the `buildingId`
+ *   field within a document must match the `buildingId` from the document path,
+ *   ensuring data consistency.
+ *
+ * Denormalization for Authorization:
+ * Each document in a subcollection (e.g., a Member document) must contain a
+ * denormalized `buildingId` field. This allows security rules to validate the
+ * document's relationship to its parent building without performing extra 'get'
+ * operations, which is faster and more scalable.
+ *
+ * Structural Segregation:
+ * The model uses separate collections for different data types (members,
+ * transactions, expenses) under a parent building, which is a secure and
+ * efficient pattern for organizing related data.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // -------------------------------------------------------------------------
+    // Helper Functions
+    // -------------------------------------------------------------------------
+
+    /**
+     * Returns true if the user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Returns true if the document being written to already exists.
+     * Crucial for protecting against unintended writes on non-existent data.
+     */
+    function documentExists() {
+      return resource != null;
+    }
+
+    /**
+     * On create, validates that the incoming document's `buildingId` field
+     * matches the ID of the parent building in the path.
+     */
+    function isLinkedToBuildingOnCreate(buildingId) {
+      return request.resource.data.buildingId == buildingId;
+    }
+
+    /**
+     * On update, ensures the `buildingId` field cannot be changed, preserving
+     * the document's relationship to its parent building.
+     */
+    function isBuildingLinkImmutable() {
+      return request.resource.data.buildingId == resource.data.buildingId;
+    }
+
+    // -------------------------------------------------------------------------
+    // Collection Rules
+    // -------------------------------------------------------------------------
+
+    /**
+     * @description Manages building documents. Buildings can be read by anyone,
+     *   but only created by signed-in users.
+     * @path /buildings/{buildingId}
+     * @allow (create) An authenticated user creating a new building.
+     * @deny  (update/delete) Anyone trying to modify or delete a building, as
+     *   ownership cannot be verified yet.
+     * @principle Public read access with authenticated create. Writes are
+     *   locked down pending schema changes for ownership.
+     */
+    match /buildings/{buildingId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+
+      // CRITICAL: Cannot implement owner-only writes. The 'Building' entity is missing an 'ownerId' or 'creatorId' field.
+      // Update and delete are disabled until an ownership field is added to the Building schema
+      // to securely verify that the requesting user is the owner of the building.
+      allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+    }
+
+    /**
+     * @description Manages members within a specific building. Any authenticated
+     *   user can perform CRUD operations on members.
+     * @path /buildings/{buildingId}/members/{memberId}
+     * @allow (create) An authenticated user creating a member document with a
+     *   correct `buildingId` field.
+     * @deny  (create) An authenticated user creating a member where the document's
+     *   `buildingId` does not match the path.
+     * @principle Enables CRUD for authenticated users while enforcing relational
+     *   integrity between the member and its parent building.
+     */
+    match /buildings/{buildingId}/members/{memberId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isLinkedToBuildingOnCreate(buildingId);
+      allow update: if isSignedIn() && documentExists() && isBuildingLinkImmutable();
+      allow delete: if isSignedIn() && documentExists();
+    }
+
+    /**
+     * @description Manages financial transactions within a specific building.
+     *   Any authenticated user can perform CRUD operations.
+     * @path /buildings/{buildingId}/transactions/{transactionId}
+     * @allow (create) An authenticated user creating a transaction document with
+     *   a correct `buildingId` field.
+     * @deny  (update) An authenticated user trying to change the `buildingId`
+     *   of an existing transaction.
+     * @principle Enables CRUD for authenticated users while enforcing relational
+     *   integrity between the transaction and its parent building.
+     */
+    match /buildings/{buildingId}/transactions/{transactionId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isLinkedToBuildingOnCreate(buildingId);
+      allow update: if isSignedIn() && documentExists() && isBuildingLinkImmutable();
+      allow delete: if isSignedIn() && documentExists();
+    }
+
+    /**
+     * @description Manages expenses within a specific building. Any authenticated
+     *   user can perform CRUD operations.
+     * @path /buildings/{buildingId}/expenses/{expenseId}
+     * @allow (delete) An authenticated user deleting an existing expense document.
+     * @deny  (delete) An authenticated user trying to delete a document that
+     *   does not exist.
+     * @principle Enables CRUD for authenticated users while enforcing relational
+     *   integrity and preventing operations on non-existent documents.
+     */
+    match /buildings/{buildingId}/expenses/{expenseId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isLinkedToBuildingOnCreate(buildingId);
+      allow update: if isSignedIn() && documentExists() && isBuildingLinkImmutable();
+      allow delete: if isSignedIn() && documentExists();
+    }
+  }
+}
