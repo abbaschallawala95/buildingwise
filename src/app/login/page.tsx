@@ -1,40 +1,134 @@
-import Link from "next/link"
+'use client';
 
-import { Button } from "@/components/ui/button"
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useForm, SubmitHandler } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useAuth, useUser, initiateEmailSignIn, initiateEmailSignUp } from '@/firebase';
+import { useEffect } from 'react';
+
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Logo } from "@/components/icons"
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Logo } from '@/components/icons';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
+
+const loginSchema = z.object({
+  email: z.string().email({ message: 'Please enter a valid email address.' }),
+  password: z
+    .string()
+    .min(6, { message: 'Password must be at least 6 characters long.' }),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+  });
+
+  useEffect(() => {
+    if (!isUserLoading && user) {
+      router.push('/dashboard');
+    }
+  }, [user, isUserLoading, router]);
+
+  const onSubmit: SubmitHandler<LoginFormValues> = async (data) => {
+    try {
+      initiateEmailSignIn(auth, data.email, data.password);
+    } catch (error: any) {
+       toast({
+        variant: "destructive",
+        title: "Login Failed",
+        description: error.message || "An unexpected error occurred.",
+      });
+    }
+  };
+  
+  const handleSignUp = async () => {
+    const email = (document.getElementById('email') as HTMLInputElement)?.value;
+    const password = (document.getElementById('password') as HTMLInputElement)?.value;
+
+    try {
+        loginSchema.parse({ email, password });
+        initiateEmailSignUp(auth, email, password);
+        toast({
+            title: "Sign Up Successful",
+            description: "You have been signed up. Please log in.",
+        });
+    } catch (error: any) {
+        if (error instanceof z.ZodError) {
+            error.errors.forEach((err) => {
+                toast({
+                    variant: "destructive",
+                    title: "Invalid Input",
+                    description: err.message,
+                });
+            });
+        } else {
+            toast({
+                variant: "destructive",
+                title: "Sign Up Failed",
+                description: error.message || "An unexpected error occurred.",
+            });
+        }
+    }
+  };
+
+
+  if (isUserLoading || user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-4">
       <Card className="mx-auto max-w-sm w-full">
         <CardHeader className="text-center">
-            <div className="flex justify-center mb-2">
-                <Logo />
-            </div>
+          <div className="flex justify-center mb-2">
+            <Logo />
+          </div>
           <CardTitle className="text-2xl">Login</CardTitle>
           <CardDescription>
-            Enter your email below to login to your account
+            Enter your email and password below to access your account.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="m@example.com"
-                required
+                {...register('email')}
               />
+              {errors.email && (
+                <p className="text-sm text-destructive">
+                  {errors.email.message}
+                </p>
+              )}
             </div>
             <div className="grid gap-2">
               <div className="flex items-center">
@@ -46,23 +140,33 @@ export default function LoginPage() {
                   Forgot your password?
                 </Link>
               </div>
-              <Input id="password" type="password" required />
+              <Input
+                id="password"
+                type="password"
+                {...register('password')}
+              />
+              {errors.password && (
+                <p className="text-sm text-destructive">
+                  {errors.password.message}
+                </p>
+              )}
             </div>
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Login
             </Button>
-            <Button variant="outline" className="w-full">
+            <Button variant="outline" className="w-full" type="button" onClick={() => alert("Google login not implemented yet.")}>
               Login with Google
             </Button>
-          </div>
+          </form>
           <div className="mt-4 text-center text-sm">
-            Don&apos;t have an account?{" "}
-            <Link href="#" className="underline">
+            Don&apos;t have an account?{' '}
+            <Button variant="link" className="p-0 h-auto" onClick={handleSignUp}>
               Sign up
-            </Link>
+            </Button>
           </div>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
