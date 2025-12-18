@@ -40,6 +40,8 @@ export default function LoginPage() {
   const {
     register,
     handleSubmit,
+    trigger,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -51,46 +53,19 @@ export default function LoginPage() {
     }
   }, [user, isUserLoading, router]);
 
-  const onSubmit: SubmitHandler<LoginFormValues> = async (data) => {
-    try {
-      initiateEmailSignIn(auth, data.email, data.password);
-    } catch (error: any) {
-       toast({
-        variant: "destructive",
-        title: "Login Failed",
-        description: error.message || "An unexpected error occurred.",
-      });
-    }
+  const onSubmit: SubmitHandler<LoginFormValues> = (data) => {
+    if (!auth) return;
+    initiateEmailSignIn(auth, data.email, data.password);
   };
   
   const handleSignUp = async () => {
-    const email = (document.getElementById('email') as HTMLInputElement)?.value;
-    const password = (document.getElementById('password') as HTMLInputElement)?.value;
+    if (!auth) return;
+    const isValid = await trigger();
+    if (!isValid) return;
 
-    try {
-        loginSchema.parse({ email, password });
-        initiateEmailSignUp(auth, email, password);
-        toast({
-            title: "Sign Up Successful",
-            description: "You have been signed up. Please log in.",
-        });
-    } catch (error: any) {
-        if (error instanceof z.ZodError) {
-            error.errors.forEach((err) => {
-                toast({
-                    variant: "destructive",
-                    title: "Invalid Input",
-                    description: err.message,
-                });
-            });
-        } else {
-            toast({
-                variant: "destructive",
-                title: "Sign Up Failed",
-                description: error.message || "An unexpected error occurred.",
-            });
-        }
-    }
+    const { email, password } = getValues();
+
+    initiateEmailSignUp(auth, email, password);
   };
 
 

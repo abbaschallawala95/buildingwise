@@ -4,26 +4,45 @@ import {
   signInAnonymously,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  // Assume getAuth and app are initialized elsewhere
 } from 'firebase/auth';
+import { toast } from '@/hooks/use-toast';
 
 /** Initiate anonymous sign-in (non-blocking). */
 export function initiateAnonymousSignIn(authInstance: Auth): void {
-  // CRITICAL: Call signInAnonymously directly. Do NOT use 'await signInAnonymously(...)'.
-  signInAnonymously(authInstance);
-  // Code continues immediately. Auth state change is handled by onAuthStateChanged listener.
+  signInAnonymously(authInstance).catch((error) => {
+    toast({
+      variant: 'destructive',
+      title: 'Anonymous Sign-In Failed',
+      description: error.message || 'An unexpected error occurred.',
+    });
+  });
 }
 
 /** Initiate email/password sign-up (non-blocking). */
 export function initiateEmailSignUp(authInstance: Auth, email: string, password: string): void {
-  // CRITICAL: Call createUserWithEmailAndPassword directly. Do NOT use 'await createUserWithEmailAndPassword(...)'.
-  createUserWithEmailAndPassword(authInstance, email, password);
-  // Code continues immediately. Auth state change is handled by onAuthStateChanged listener.
+  createUserWithEmailAndPassword(authInstance, email, password)
+  .then(() => {
+      toast({
+        title: "Sign Up Successful",
+        description: "Your account has been created. Please log in.",
+      });
+  })
+  .catch((error) => {
+    toast({
+      variant: 'destructive',
+      title: 'Sign Up Failed',
+      description: error.message || 'An unexpected error occurred.',
+    });
+  });
 }
 
 /** Initiate email/password sign-in (non-blocking). */
 export function initiateEmailSignIn(authInstance: Auth, email: string, password: string): void {
-  // CRITICAL: Call signInWithEmailAndPassword directly. Do NOT use 'await signInWithEmailAndPassword(...)'.
-  signInWithEmailAndPassword(authInstance, email, password);
-  // Code continues immediately. Auth state change is handled by onAuthStateChanged listener.
+  signInWithEmailAndPassword(authInstance, email, password).catch((error) => {
+    toast({
+      variant: 'destructive',
+      title: 'Login Failed',
+      description: error.message || 'An unexpected error occurred.',
+    });
+  });
 }
