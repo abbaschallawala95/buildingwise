@@ -15,7 +15,7 @@ import React from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
 import { Logo } from '../icons';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -42,6 +42,12 @@ function HeaderContent() {
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="flex flex-col">
+          <SheetHeader className="text-left">
+            <SheetTitle>Navigation Menu</SheetTitle>
+            <SheetDescription className="sr-only">
+              Main navigation links for the application.
+            </SheetDescription>
+          </SheetHeader>
            <nav className="grid gap-2 text-lg font-medium">
             <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold mb-4">
               <Logo />
