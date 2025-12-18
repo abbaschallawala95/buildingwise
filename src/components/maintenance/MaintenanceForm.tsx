@@ -1,9 +1,11 @@
-"use client";
+'use client';
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { collection, serverTimestamp, doc } from 'firebase/firestore';
+import { useFirestore, useCollection, addDocumentNonBlocking, useMemoFirebase } from '@/firebase';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,27 +27,28 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { members, buildings } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
 import { generatePersonalizedReceiptMessage } from "@/ai/flows/generate-personalized-receipt-message";
 import { Loader2, Wand2 } from "lucide-react";
+import type { Building } from "@/app/(app)/buildings/page";
+import type { Member } from "@/app/(app)/members/page";
+import type { Transaction } from "@/app/(app)/transactions/page";
 
 const maintenanceSchema = z.object({
   buildingId: z.string().min(1, "Please select a building."),
   memberId: z.string().min(1, "Please select a member."),
   amount: z.coerce.number().min(1, "Amount must be greater than 0."),
-  month: z.string().min(1, "Month is required."),
+  month: z.string().min(3, "Month is required e.g. July 2024."),
   paymentMode: z.enum(["Cash", "Online", "Cheque"]),
 });
 
 type MaintenanceFormValues = z.infer<typeof maintenanceSchema>;
 
-type ReceiptData = MaintenanceFormValues & { receiptNumber: string };
+type ReceiptData = Transaction;
 
 export function MaintenanceForm() {
-  const [selectedBuilding, setSelectedBuilding] = useState("");
+  const firestore = useFirestore();
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedMessage, setGeneratedMessage] = useState("");
   const { toast } = useToast();
@@ -55,40 +58,69 @@ export function MaintenanceForm() {
     handleSubmit,
     watch,
     setValue,
-    formState: { errors },
+    reset,
+    formState: { errors, isSubmitting },
   } = useForm<MaintenanceFormValues>({
     resolver: zodResolver(maintenanceSchema),
   });
 
   const buildingId = watch("buildingId");
 
-  const onSubmit: SubmitHandler<MaintenanceFormValues> = (data) => {
-    setIsSubmitting(true);
-    // Simulate API call
-    setTimeout(() => {
-      const receiptNumber = `R-${new Date().getFullYear()}${Math.floor(Math.random() * 9000) + 1000}`;
-      setReceiptData({ ...data, receiptNumber });
+  const buildingsCollection = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'buildings') : null),
+    [firestore]
+  );
+  const { data: buildings, isLoading: loadingBuildings } = useCollection<Building>(buildingsCollection);
+  
+  const membersInBuildingCollection = useMemoFirebase(
+    () => (firestore && buildingId ? collection(firestore, 'buildings', buildingId, 'members') : null),
+    [firestore, buildingId]
+  );
+  const { data: members, isLoading: loadingMembers } = useCollection<Member>(membersInBuildingCollection);
+
+  const onSubmit: SubmitHandler<MaintenanceFormValues> = async (data) => {
+    if (!firestore) return;
+    
+    const receiptNumber = `R-${new Date().getFullYear()}${Math.floor(Math.random() * 9000) + 1000}`;
+    const transactionData = {
+      ...data,
+      id: '', // will be set by firestore
+      type: 'maintenance' as const,
+      title: 'Monthly Maintenance',
+      receiptNumber: receiptNumber,
+      createdAt: serverTimestamp(),
+    };
+
+    const collectionRef = collection(firestore, 'buildings', data.buildingId, 'transactions');
+    try {
+      const docRef = await addDocumentNonBlocking(collectionRef, transactionData);
+      setReceiptData({ ...transactionData, id: docRef ? docRef.id : '' });
       toast({
         title: "Success!",
         description: "Maintenance payment recorded successfully.",
       });
-      setIsSubmitting(false);
-    }, 1000);
+      reset();
+    } catch (error) {
+       toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not record payment. Please try again.",
+      });
+    }
   };
 
   const handleGenerateMessage = async () => {
-    if (!receiptData) return;
+    if (!receiptData || !buildings || !members) return;
     setIsGenerating(true);
     setGeneratedMessage("");
     try {
-      const memberName = members.find(m => m.id === receiptData.memberId)?.name || "Member";
-      const buildingName = buildings.find(b => b.id === receiptData.buildingId)?.name || "Building";
-      const flatNumber = members.find(m => m.id === receiptData.memberId)?.flatNumber || "";
+      const member = members.find(m => m.id === receiptData.memberId);
+      const building = buildings.find(b => b.id === receiptData.buildingId);
       
       const result = await generatePersonalizedReceiptMessage({
-        buildingName,
-        memberName,
-        flatNumber,
+        buildingName: building?.buildingName || "Your Building",
+        memberName: member?.fullName || "Valued Member",
+        flatNumber: member?.flatNumber || "",
         amount: receiptData.amount,
         month: receiptData.month,
         receiptNumber: receiptData.receiptNumber,
@@ -129,7 +161,7 @@ export function MaintenanceForm() {
             {generatedMessage && (
               <Textarea
                 value={generatedMessage}
-                readOnly
+                onChange={(e) => setGeneratedMessage(e.target.value)}
                 rows={6}
                 className="bg-muted"
               />
@@ -144,7 +176,7 @@ export function MaintenanceForm() {
               ) : (
                 <>
                   <Wand2 className="mr-2 h-4 w-4" />
-                  Generate with AI
+                  {generatedMessage ? 'Regenerate with AI' : 'Generate with AI'}
                 </>
               )}
             </Button>
@@ -173,16 +205,15 @@ export function MaintenanceForm() {
             <Label htmlFor="buildingId">Building</Label>
             <Select onValueChange={(value) => {
               setValue("buildingId", value);
-              setSelectedBuilding(value);
               setValue("memberId", "");
-            }}>
+            }} disabled={loadingBuildings}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a building" />
               </SelectTrigger>
               <SelectContent>
-                {buildings.map((building) => (
+                {buildings?.map((building) => (
                   <SelectItem key={building.id} value={building.id}>
-                    {building.name}
+                    {building.buildingName}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -192,16 +223,15 @@ export function MaintenanceForm() {
 
           <div className="space-y-2">
             <Label htmlFor="memberId">Member</Label>
-            <Select onValueChange={(value) => setValue("memberId", value)} disabled={!buildingId}>
+            <Select onValueChange={(value) => setValue("memberId", value)} disabled={!buildingId || loadingMembers}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a member" />
               </SelectTrigger>
               <SelectContent>
                 {members
-                  .filter((member) => member.buildingId === buildingId)
-                  .map((member) => (
+                  ?.map((member) => (
                     <SelectItem key={member.id} value={member.id}>
-                      {member.name} - {member.flatNumber}
+                      {member.fullName} - {member.flatNumber}
                     </SelectItem>
                   ))}
               </SelectContent>

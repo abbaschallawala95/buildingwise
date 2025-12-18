@@ -8,7 +8,8 @@ import {
   Wrench,
   PlusCircle,
   CreditCard,
-  LayoutDashboard
+  LayoutDashboard,
+  ArrowRightLeft
 } from 'lucide-react';
 import React from 'react';
 
@@ -16,8 +17,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Logo } from '../icons';
+import { usePathname } from 'next/navigation';
+import { cn } from '@/lib/utils';
+
+const navLinks = [
+    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/buildings", label: "Buildings", icon: Building2 },
+    { href: "/members", label: "Members", icon: Users },
+    { href: "/maintenance", label: "Maintenance", icon: Wrench },
+    { href: "/transactions", label: "Transactions", icon: ArrowRightLeft },
+    { href: "/extra-collections", label: "Extra Collections", icon: PlusCircle },
+    { href: "/expenses", label: "Expenses", icon: CreditCard },
+];
 
 function HeaderContent() {
+    const pathname = usePathname();
   return (
     <>
       <Sheet>
@@ -28,52 +42,26 @@ function HeaderContent() {
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="flex flex-col">
-          <nav className="grid gap-2 text-lg font-medium">
+           <nav className="grid gap-2 text-lg font-medium">
             <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold mb-4">
               <Logo />
             </Link>
-            <Link
-              href="/dashboard"
-              className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-            >
-              <LayoutDashboard className="h-5 w-5" />
-              Dashboard
-            </Link>
-            <Link
-              href="/buildings"
-              className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-            >
-              <Building2 className="h-5 w-5" />
-              Buildings
-            </Link>
-            <Link
-              href="/members"
-              className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-            >
-              <Users className="h-5 w-5" />
-              Members
-            </Link>
-            <Link
-              href="/maintenance"
-              className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-            >
-              <Wrench className="h-5 w-5" />
-              Maintenance
-            </Link>
-            <Link
-              href="/extra-collections"
-              className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-            >
-              <PlusCircle className="h-5 w-5" />
-              Extra Collections
-            </Link>
-            <Link
-              href="/expenses"
-              className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-            >
-              <CreditCard className="h-5 w-5" />
-              Expenses
-            </Link>
+            {navLinks.map(link => {
+                const isActive = pathname === link.href;
+                return (
+                    <Link
+                        key={link.href}
+                        href={link.href}
+                         className={cn(
+                            "mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2",
+                            isActive ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        <link.icon className="h-5 w-5" />
+                        {link.label}
+                    </Link>
+                )
+            })}
           </nav>
         </SheetContent>
       </Sheet>
