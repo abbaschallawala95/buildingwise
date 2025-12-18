@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, type SubmitHandler, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -59,11 +59,13 @@ interface MemberFormProps {
 export function MemberForm({ isOpen, setIsOpen, member, buildings }: MemberFormProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
+  
   const {
     register,
     handleSubmit,
     reset,
     control,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<MemberFormValues>({
     resolver: zodResolver(memberSchema),
@@ -74,9 +76,17 @@ export function MemberForm({ isOpen, setIsOpen, member, buildings }: MemberFormP
     }
   });
 
+  const [startDate, setStartDate] = useState<Date | undefined>();
+  const [endDate, setEndDate] = useState<Date | undefined>();
+
   useEffect(() => {
     if (isOpen) {
         if (member) {
+          const initialStartDate = member.maintenanceStartDate 
+              ? (member.maintenanceStartDate.toDate ? member.maintenanceStartDate.toDate() : new Date(member.maintenanceStartDate))
+              : new Date();
+          const initialEndDate = member.maintenanceEndDate?.toDate ? member.maintenanceEndDate.toDate() : (member.maintenanceEndDate ? new Date(member.maintenanceEndDate) : undefined);
+          
           reset({
             buildingId: member.buildingId,
             fullName: member.fullName,
@@ -85,13 +95,14 @@ export function MemberForm({ isOpen, setIsOpen, member, buildings }: MemberFormP
             contactNumber: member.contactNumber,
             monthlyMaintenance: member.monthlyMaintenance,
             previousDues: member.previousDues,
-            maintenanceStartDate: member.maintenanceStartDate 
-              ? (member.maintenanceStartDate.toDate ? member.maintenanceStartDate.toDate() : new Date(member.maintenanceStartDate))
-              : new Date(),
-            maintenanceEndDate: member.maintenanceEndDate?.toDate ? member.maintenanceEndDate.toDate() : (member.maintenanceEndDate ? new Date(member.maintenanceEndDate) : undefined),
+            maintenanceStartDate: initialStartDate,
+            maintenanceEndDate: initialEndDate,
             monthlyDueDate: member.monthlyDueDate,
           });
+          setStartDate(initialStartDate);
+          setEndDate(initialEndDate);
         } else {
+          const newStartDate = new Date();
           reset({
             buildingId: '',
             fullName: '',
@@ -100,13 +111,24 @@ export function MemberForm({ isOpen, setIsOpen, member, buildings }: MemberFormP
             contactNumber: '',
             monthlyMaintenance: 0,
             previousDues: 0,
-            maintenanceStartDate: new Date(),
+            maintenanceStartDate: newStartDate,
             maintenanceEndDate: undefined,
             monthlyDueDate: 10,
           });
+          setStartDate(newStartDate);
+          setEndDate(undefined);
         }
     }
   }, [member, reset, isOpen]);
+
+  useEffect(() => {
+    if(startDate) setValue('maintenanceStartDate', startDate);
+  }, [startDate, setValue]);
+  
+  useEffect(() => {
+    setValue('maintenanceEndDate', endDate);
+  }, [endDate, setValue]);
+
 
   const onSubmit: SubmitHandler<MemberFormValues> = async (data) => {
     if (!firestore) {
@@ -233,65 +255,53 @@ export function MemberForm({ isOpen, setIsOpen, member, buildings }: MemberFormP
             <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                     <Label>Maintenance Start Date</Label>
-                     <Controller
-                      control={control}
-                      name="maintenanceStartDate"
-                      render={({ field }) => (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full justify-start text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      )}
-                    />
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !startDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={startDate}
+                          onSelect={setStartDate}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
                     {errors.maintenanceStartDate && <p className="text-sm text-destructive">{errors.maintenanceStartDate.message}</p>}
                 </div>
                  <div className="grid gap-2">
                     <Label>Maintenance End Date (Optional)</Label>
-                    <Controller
-                      control={control}
-                      name="maintenanceEndDate"
-                      render={({ field }) => (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full justify-start text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      )}
-                    />
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !endDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {endDate ? format(endDate, "PPP") : <span>Pick a date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={endDate}
+                          onSelect={setEndDate}
+                        />
+                      </PopoverContent>
+                    </Popover>
                 </div>
             </div>
              <div className="grid gap-2">
