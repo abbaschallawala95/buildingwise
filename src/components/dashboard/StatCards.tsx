@@ -6,6 +6,7 @@ import type { Member } from '@/app/(app)/members/page';
 import type { Transaction } from '@/app/(app)/transactions/page';
 import type { Expense } from '@/app/(app)/expenses/page';
 import { Skeleton } from '../ui/skeleton';
+import type { Building } from '@/app/(app)/buildings/page';
 
 const StatCard = ({ title, value, icon: Icon, change, changeType, isLoading }: { title: string; value: string; icon: React.ElementType; change?: string, changeType?: 'increase' | 'decrease', isLoading?: boolean }) => (
   <Card>
@@ -37,10 +38,11 @@ interface StatCardsProps {
   members: Member[];
   transactions: Transaction[];
   expenses: Expense[];
+  buildings: Building[];
   isLoading: boolean;
 }
 
-export default function StatCards({ members, transactions, expenses, isLoading }: StatCardsProps) {
+export default function StatCards({ members, transactions, expenses, buildings, isLoading }: StatCardsProps) {
   const totalMembers = members.length;
   const totalMaintenance = transactions
     .filter(t => t.type === 'maintenance')
@@ -49,7 +51,8 @@ export default function StatCards({ members, transactions, expenses, isLoading }
     .filter(t => t.type === 'extra_collection')
     .reduce((acc, t) => acc + t.amount, 0);
   const totalExpenses = expenses.reduce((acc, e) => acc + e.amount, 0);
-  const netBalance = totalMaintenance + totalExtraCollections - totalExpenses;
+  const totalOpeningBalance = buildings.reduce((acc, b) => acc + (b.openingBalance || 0), 0);
+  const netBalance = totalOpeningBalance + totalMaintenance + totalExtraCollections - totalExpenses;
   const pendingDues = members.reduce((acc, m) => acc + (m.previousDues || 0), 0);
 
   const formatCurrency = (amount: number) => 

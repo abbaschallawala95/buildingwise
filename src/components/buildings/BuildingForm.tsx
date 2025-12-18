@@ -30,6 +30,7 @@ import type { Building } from '@/app/(app)/buildings/page';
 const buildingSchema = z.object({
   buildingName: z.string().min(3, 'Building name must be at least 3 characters long.'),
   address: z.string().min(5, 'Address must be at least 5 characters long.'),
+  openingBalance: z.coerce.number().min(0, 'Opening balance cannot be negative.'),
 });
 
 type BuildingFormValues = z.infer<typeof buildingSchema>;
@@ -50,6 +51,9 @@ export function BuildingForm({ isOpen, setIsOpen, building }: BuildingFormProps)
     formState: { errors, isSubmitting },
   } = useForm<BuildingFormValues>({
     resolver: zodResolver(buildingSchema),
+    defaultValues: {
+      openingBalance: 0,
+    }
   });
 
   useEffect(() => {
@@ -57,11 +61,13 @@ export function BuildingForm({ isOpen, setIsOpen, building }: BuildingFormProps)
       reset({
         buildingName: building.buildingName,
         address: building.address,
+        openingBalance: building.openingBalance || 0,
       });
     } else {
       reset({
         buildingName: '',
         address: '',
+        openingBalance: 0,
       });
     }
   }, [building, reset, isOpen]);
@@ -109,7 +115,7 @@ export function BuildingForm({ isOpen, setIsOpen, building }: BuildingFormProps)
   
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
             <DialogTitle>{building ? 'Edit Building' : 'Add New Building'}</DialogTitle>
@@ -136,6 +142,17 @@ export function BuildingForm({ isOpen, setIsOpen, building }: BuildingFormProps)
               />
               {errors.address && (
                 <p className="text-sm text-destructive">{errors.address.message}</p>
+              )}
+            </div>
+             <div className="grid gap-2">
+              <Label htmlFor="openingBalance">Opening Balance</Label>
+              <Input
+                id="openingBalance"
+                type="number"
+                {...register('openingBalance')}
+              />
+              {errors.openingBalance && (
+                <p className="text-sm text-destructive">{errors.openingBalance.message}</p>
               )}
             </div>
           </div>

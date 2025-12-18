@@ -52,6 +52,7 @@ export type Building = {
   id: string;
   buildingName: string;
   address: string;
+  openingBalance?: number;
   createdAt?: any;
 };
 
@@ -110,6 +111,13 @@ export default function BuildingsPage() {
     });
   }, [buildings]);
   
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+    }).format(amount);
+
   return (
     <>
       <PageHeader title="Buildings">
@@ -131,6 +139,7 @@ export default function BuildingsPage() {
               <TableRow>
                 <TableHead>Building Name</TableHead>
                 <TableHead>Address</TableHead>
+                <TableHead>Opening Balance</TableHead>
                 <TableHead>
                   <span className="sr-only">Actions</span>
                 </TableHead>
@@ -147,6 +156,9 @@ export default function BuildingsPage() {
                       <Skeleton className="h-4 w-[300px]" />
                     </TableCell>
                     <TableCell>
+                      <Skeleton className="h-4 w-[100px]" />
+                    </TableCell>
+                    <TableCell>
                       <Skeleton className="h-9 w-[50px]" />
                     </TableCell>
                   </TableRow>
@@ -158,6 +170,9 @@ export default function BuildingsPage() {
                       <Skeleton className="h-4 w-[250px]" />
                     </TableCell>
                     <TableCell>
+                      <Skeleton className="h-4 w-[100px]" />
+                    </TableCell>
+                    <TableCell>
                       <Skeleton className="h-9 w-[50px]" />
                     </TableCell>
                   </TableRow>
@@ -165,7 +180,7 @@ export default function BuildingsPage() {
               )}
               {error && (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-destructive">
+                  <TableCell colSpan={4} className="text-center text-destructive">
                     Error loading buildings: {error.message}
                   </TableCell>
                 </TableRow>
@@ -176,6 +191,7 @@ export default function BuildingsPage() {
                   <TableRow key={building.id}>
                     <TableCell className="font-medium">{building.buildingName}</TableCell>
                     <TableCell>{building.address}</TableCell>
+                    <TableCell>{formatCurrency(building.openingBalance || 0)}</TableCell>
                     <TableCell className="text-right">
                        <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -196,7 +212,7 @@ export default function BuildingsPage() {
                 ))}
               {!isLoading && !error && sortedBuildings?.length === 0 && (
                  <TableRow>
-                    <TableCell colSpan={3} className="text-center text-muted-foreground">
+                    <TableCell colSpan={4} className="text-center text-muted-foreground">
                         No buildings found. Click &quot;Add Building&quot; to get started.
                     </TableCell>
                  </TableRow>

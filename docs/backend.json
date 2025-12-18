@@ -18,6 +18,10 @@
           "type": "string",
           "description": "Address of the building."
         },
+        "openingBalance": {
+          "type": "number",
+          "description": "The initial or opening balance for the building."
+        },
         "createdAt": {
           "type": "string",
           "description": "Timestamp indicating when the building was created.",

@@ -50,6 +50,7 @@ export default function DashboardPage() {
       </PageHeader>
       <div className="space-y-6">
         <StatCards
+          buildings={buildings || []}
           members={members || []}
           transactions={transactions || []}
           expenses={expenses || []}
