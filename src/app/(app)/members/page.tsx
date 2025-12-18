@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { PlusCircle, MoreHorizontal } from 'lucide-react';
-import { collection, doc } from 'firebase/firestore';
+import { collection, doc, collectionGroup } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { Building } from '@/app/(app)/buildings/page';
@@ -71,10 +71,9 @@ export default function MembersPage() {
     [firestore]
   );
   
-  // Fetch all members from all buildings. For a large number of members,
-  // this should be optimized to fetch members only for a selected building.
+  // Fetch all members from all buildings using a collection group query.
   const membersCollectionGroup = useMemoFirebase(
-    () => (firestore ? collection(firestore, 'members') : null),
+    () => (firestore ? collectionGroup(firestore, 'members') : null),
     [firestore]
   );
   
@@ -244,7 +243,7 @@ export default function MembersPage() {
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the member from the building.
-            </AlertDialogDescription>
+            </AlexDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
