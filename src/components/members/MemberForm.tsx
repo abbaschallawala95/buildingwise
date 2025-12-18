@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, type SubmitHandler, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -12,7 +12,6 @@ import {
 } from 'firebase/firestore';
 import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
 
 import {
   Dialog,
@@ -26,10 +25,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, CalendarIcon } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Calendar } from '../ui/calendar';
+import { cn } from '@/lib/utils';
 
 import type { Member } from '@/app/(app)/members/page';
 import type { Building } from '@/app/(app)/buildings/page';
@@ -240,26 +240,26 @@ export function MemberForm({ isOpen, setIsOpen, member, buildings }: MemberFormP
                         name="maintenanceStartDate"
                         control={control}
                         render={({ field }) => (
-                            <Popover>
+                           <Popover>
                                 <PopoverTrigger asChild>
-                                    <Button
+                                  <Button
                                     variant={"outline"}
                                     className={cn(
-                                        "w-full justify-start text-left font-normal",
-                                        !field.value && "text-muted-foreground"
+                                      "w-full justify-start text-left font-normal",
+                                      !field.value && "text-muted-foreground"
                                     )}
-                                    >
+                                  >
                                     <CalendarIcon className="mr-2 h-4 w-4" />
                                     {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                                    </Button>
+                                  </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0">
-                                    <Calendar
+                                  <Calendar
                                     mode="single"
                                     selected={field.value}
                                     onSelect={field.onChange}
                                     initialFocus
-                                    />
+                                  />
                                 </PopoverContent>
                             </Popover>
                         )}
@@ -272,25 +272,25 @@ export function MemberForm({ isOpen, setIsOpen, member, buildings }: MemberFormP
                         name="maintenanceEndDate"
                         control={control}
                         render={({ field }) => (
-                            <Popover>
+                           <Popover>
                                 <PopoverTrigger asChild>
-                                    <Button
+                                  <Button
                                     variant={"outline"}
                                     className={cn(
-                                        "w-full justify-start text-left font-normal",
-                                        !field.value && "text-muted-foreground"
+                                      "w-full justify-start text-left font-normal",
+                                      !field.value && "text-muted-foreground"
                                     )}
-                                    >
+                                  >
                                     <CalendarIcon className="mr-2 h-4 w-4" />
                                     {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                                    </Button>
+                                  </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0">
-                                    <Calendar
+                                  <Calendar
                                     mode="single"
                                     selected={field.value}
                                     onSelect={field.onChange}
-                                    />
+                                  />
                                 </PopoverContent>
                             </Popover>
                         )}
