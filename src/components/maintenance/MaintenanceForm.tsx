@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from "react";
-import { useForm, type SubmitHandler } from "react-hook-form";
+import { useForm, type SubmitHandler, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { collection, serverTimestamp, doc } from 'firebase/firestore';
@@ -70,7 +70,6 @@ export function MaintenanceForm() {
   });
 
   const buildingId = watch("buildingId");
-  const month = watch("month");
 
   const buildingsCollection = useMemoFirebase(
     () => (firestore ? collection(firestore, 'buildings') : null),
@@ -209,39 +208,58 @@ export function MaintenanceForm() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="buildingId">Building</Label>
-            <Select onValueChange={(value) => {
-              setValue("buildingId", value);
-              setValue("memberId", "");
-            }} disabled={loadingBuildings}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a building" />
-              </SelectTrigger>
-              <SelectContent>
-                {buildings?.map((building) => (
-                  <SelectItem key={building.id} value={building.id}>
-                    {building.buildingName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Controller
+              name="buildingId"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    setValue("memberId", "");
+                  }}
+                  value={field.value}
+                  disabled={loadingBuildings}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a building" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {buildings?.map((building) => (
+                      <SelectItem key={building.id} value={building.id}>
+                        {building.buildingName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
             {errors.buildingId && <p className="text-sm text-destructive">{errors.buildingId.message}</p>}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="memberId">Member</Label>
-            <Select onValueChange={(value) => setValue("memberId", value)} disabled={!buildingId || loadingMembers}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a member" />
-              </SelectTrigger>
-              <SelectContent>
-                {members
-                  ?.map((member) => (
-                    <SelectItem key={member.id} value={member.id}>
-                      {member.fullName} - {member.flatNumber}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
+            <Controller
+              name="memberId"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value}
+                  disabled={!buildingId || loadingMembers}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a member" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {members?.map((member) => (
+                        <SelectItem key={member.id} value={member.id}>
+                          {member.fullName} - {member.flatNumber}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
             {errors.memberId && <p className="text-sm text-destructive">{errors.memberId.message}</p>}
           </div>
 
@@ -253,44 +271,57 @@ export function MaintenanceForm() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="month">For Month</Label>
-               <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !month && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {month ? format(month, "MMMM yyyy") : <span>Pick a month</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={month}
-                      onSelect={(date) => setValue('month', date as Date)}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+               <Controller
+                  name="month"
+                  control={control}
+                  render={({ field }) => (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {field.value ? format(field.value, "MMMM yyyy") : <span>Pick a month</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                />
               {errors.month && <p className="text-sm text-destructive">{errors.month.message}</p>}
             </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="paymentMode">Payment Mode</Label>
-            <Select defaultValue="Online" onValueChange={(value: "Cash" | "Online" | "Cheque") => setValue("paymentMode", value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select payment mode" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Online">Online</SelectItem>
-                <SelectItem value="Cash">Cash</SelectItem>
-                <SelectItem value="Cheque">Cheque</SelectItem>
-              </SelectContent>
-            </Select>
+             <Controller
+                name="paymentMode"
+                control={control}
+                defaultValue="Online"
+                render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select payment mode" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Online">Online</SelectItem>
+                        <SelectItem value="Cash">Cash</SelectItem>
+                        <SelectItem value="Cheque">Cheque</SelectItem>
+                      </SelectContent>
+                    </Select>
+                )}
+            />
           </div>
         </CardContent>
         <CardFooter>
