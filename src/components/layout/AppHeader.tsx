@@ -11,6 +11,7 @@ import {
   CreditCard,
   LayoutDashboard
 } from 'lucide-react';
+import React from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -26,11 +27,20 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/s
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Logo } from '../icons';
 
-export function AppHeader() {
+function HeaderContent() {
   const userAvatar = PlaceHolderImages.find(p => p.id === 'user-avatar');
+  const [isClient, setIsClient] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  if (!isClient) {
+    return <div className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6" />;
+  }
 
   return (
-    <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
+    <>
       <Sheet>
         <SheetTrigger asChild>
           <Button variant="outline" size="icon" className="shrink-0 lg:hidden">
@@ -39,7 +49,7 @@ export function AppHeader() {
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="flex flex-col">
-        <SheetTitle className="sr-only">Mobile Navigation</SheetTitle>
+          <SheetTitle className="sr-only">Mobile Navigation</SheetTitle>
           <nav className="grid gap-2 text-lg font-medium">
             <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold mb-4">
               <Logo />
@@ -128,6 +138,15 @@ export function AppHeader() {
           <DropdownMenuItem>Logout</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+    </>
+  );
+}
+
+
+export function AppHeader() {
+  return (
+    <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
+      <HeaderContent />
     </header>
   );
 }
