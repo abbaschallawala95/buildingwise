@@ -204,6 +204,49 @@
         "amount",
         "expenseDate"
       ]
+    },
+    "ExtraCollection": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Extra Collection",
+      "type": "object",
+      "description": "Represents an extra collection for a specific purpose.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the extra collection."
+        },
+        "buildingId": {
+          "type": "string",
+          "description": "Reference to Building. (Relationship: Building 1:N ExtraCollection)"
+        },
+        "title": {
+          "type": "string",
+          "description": "Title or purpose of the collection."
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "The total amount to be collected."
+        },
+        "date": {
+          "type": "string",
+          "description": "Date of the collection.",
+          "format": "date-time"
+        },
+        "paidMembers": {
+          "type": "array",
+          "description": "List of member IDs who have paid.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "buildingId",
+        "title",
+        "totalAmount",
+        "date"
+      ]
     }
   },
   "auth": {
@@ -286,6 +329,26 @@
             {
               "name": "expenseId",
               "description": "Unique identifier for the expense."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/buildings/{buildingId}/extraCollections/{extraCollectionId}",
+        "definition": {
+          "entityName": "ExtraCollection",
+          "schema": {
+            "$ref": "#/backend/entities/ExtraCollection"
+          },
+          "description": "Stores extra collection details for a specific building.",
+          "params": [
+            {
+              "name": "buildingId",
+              "description": "Unique identifier for the building."
+            },
+            {
+              "name": "extraCollectionId",
+              "description": "Unique identifier for the extra collection."
             }
           ]
         }

@@ -15,7 +15,8 @@ import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, collectionGroup } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Building } from "../buildings/page";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { ExtraCollectionForm } from "@/components/extra-collections/ExtraCollectionForm";
 
 // This type can be expanded and moved to a central types file
 export type ExtraCollection = {
@@ -29,6 +30,7 @@ export type ExtraCollection = {
 
 export default function ExtraCollectionsPage() {
   const firestore = useFirestore();
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const buildingsCollection = useMemoFirebase(
     () => (firestore ? collection(firestore, 'buildings') : null),
@@ -72,10 +74,14 @@ export default function ExtraCollectionsPage() {
     return (collection.paidMembers.length / totalMembers) * 100;
   }
 
+  const handleAdd = () => {
+    setDialogOpen(true);
+  };
+
   return (
     <>
       <PageHeader title="Extra Collections">
-        <Button size="sm" className="gap-1">
+        <Button size="sm" className="gap-1" onClick={handleAdd}>
           <PlusCircle className="h-3.5 w-3.5" />
           <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
             New Collection
@@ -126,7 +132,7 @@ export default function ExtraCollectionsPage() {
                         <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Progress</span>
                             {/* This member count is a placeholder */}
-                            <span>{collection.paidMembers.length} / 50 Paid</span>
+                            <span>{collection.paidMembers?.length || 0} / 50 Paid</span>
                         </div>
                         <Progress value={getCollectionProgress(collection)} aria-label={`${getCollectionProgress(collection)}% paid`} />
                       </div>
@@ -135,12 +141,17 @@ export default function ExtraCollectionsPage() {
                   </Card>
                 ))
             ) : (
-                <div className="col-span-full text-center text-muted-foreground">
-                    No extra collections found.
+                <div className="col-span-full text-center py-12 text-muted-foreground">
+                    No extra collections found. Click "New Collection" to get started.
                 </div>
             )}
         </div>
       )}
+      <ExtraCollectionForm 
+        isOpen={dialogOpen}
+        setIsOpen={setDialogOpen}
+        buildings={buildings || []}
+      />
     </>
   );
 }
