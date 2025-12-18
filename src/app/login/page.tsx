@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAuth, useUser, initiateEmailSignIn, initiateEmailSignUp } from '@/firebase';
-import { useEffect } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -32,8 +30,6 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-  const auth = useAuth();
-  const { user, isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -47,35 +43,22 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
-  useEffect(() => {
-    if (!isUserLoading && user) {
-      router.push('/dashboard');
-    }
-  }, [user, isUserLoading, router]);
-
   const onSubmit: SubmitHandler<LoginFormValues> = (data) => {
-    if (!auth) return;
-    initiateEmailSignIn(auth, data.email, data.password);
+    // Mock login
+    console.log('Login attempt with:', data);
+    toast({
+      title: 'Login Disabled',
+      description: 'Authentication is temporarily disabled.',
+    });
+    router.push('/dashboard');
   };
   
   const handleSignUp = async () => {
-    if (!auth) return;
-    const isValid = await trigger();
-    if (!isValid) return;
-
-    const { email, password } = getValues();
-
-    initiateEmailSignUp(auth, email, password);
+    toast({
+      title: 'Sign Up Disabled',
+      description: 'Authentication is temporarily disabled.',
+    });
   };
-
-
-  if (isUserLoading || user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-4">
@@ -86,7 +69,7 @@ export default function LoginPage() {
           </div>
           <CardTitle className="text-2xl">Login</CardTitle>
           <CardDescription>
-            Enter your email and password below to access your account.
+            Authentication is temporarily disabled.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -98,6 +81,7 @@ export default function LoginPage() {
                 type="email"
                 placeholder="m@example.com"
                 {...register('email')}
+                disabled
               />
               {errors.email && (
                 <p className="text-sm text-destructive">
@@ -119,6 +103,7 @@ export default function LoginPage() {
                 id="password"
                 type="password"
                 {...register('password')}
+                disabled
               />
               {errors.password && (
                 <p className="text-sm text-destructive">
@@ -128,15 +113,15 @@ export default function LoginPage() {
             </div>
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Login
+              Continue to App
             </Button>
-            <Button variant="outline" className="w-full" type="button" onClick={() => alert("Google login not implemented yet.")}>
+            <Button variant="outline" className="w-full" type="button" disabled>
               Login with Google
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">
             Don&apos;t have an account?{' '}
-            <Button variant="link" className="p-0 h-auto" onClick={handleSignUp}>
+            <Button variant="link" className="p-0 h-auto" onClick={handleSignUp} disabled>
               Sign up
             </Button>
           </div>

@@ -1,6 +1,5 @@
 'use client';
 import Link from 'next/link';
-import Image from 'next/image';
 import {
   Menu,
   Search,
@@ -14,31 +13,11 @@ import {
 import React from 'react';
 
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Logo } from '../icons';
 
 function HeaderContent() {
-  const userAvatar = PlaceHolderImages.find(p => p.id === 'user-avatar');
-  const [isClient, setIsClient] = React.useState(false);
-
-  React.useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  if (!isClient) {
-    return <div className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6" />;
-  }
-
   return (
     <>
       <Sheet>
@@ -49,7 +28,6 @@ function HeaderContent() {
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="flex flex-col">
-          <SheetTitle className="sr-only">Mobile Navigation</SheetTitle>
           <nav className="grid gap-2 text-lg font-medium">
             <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold mb-4">
               <Logo />
@@ -112,32 +90,6 @@ function HeaderContent() {
           </div>
         </form>
       </div>
-
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="secondary" size="icon" className="rounded-full">
-            {userAvatar && (
-              <Image
-                src={userAvatar.imageUrl}
-                width={36}
-                height={36}
-                alt="User Avatar"
-                data-ai-hint={userAvatar.imageHint}
-                className="rounded-full"
-              />
-            )}
-            <span className="sr-only">Toggle user menu</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>My Account</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem>Settings</DropdownMenuItem>
-          <DropdownMenuItem>Support</DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem>Logout</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
     </>
   );
 }
