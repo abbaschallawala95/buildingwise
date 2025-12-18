@@ -69,6 +69,14 @@ export function useCollection<T = any>(
       return;
     }
 
+    // This is a specific guard against an invalid query object that can be created
+    // if `collectionGroup` is called before firestore is initialized.
+    if (!(memoizedTargetRefOrQuery as any)._query) {
+        setIsLoading(true);
+        setData(null);
+        return;
+    }
+
     setIsLoading(true);
     setError(null);
 
