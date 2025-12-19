@@ -11,7 +11,7 @@ import {
   LayoutDashboard,
   ArrowRightLeft
 } from 'lucide-react';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -90,9 +90,15 @@ function HeaderContent() {
 
 
 export function AppHeader() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
-      <HeaderContent />
+      {mounted ? <HeaderContent /> : null}
     </header>
   );
 }
