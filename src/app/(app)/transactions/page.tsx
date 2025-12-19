@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useMemo } from 'react';
-import { collectionGroup } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import React, { useMemo, useState } from 'react';
+import { collection, collectionGroup, doc } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
 import type { Building } from '@/app/(app)/buildings/page';
 import type { Member } from '@/app/(app)/members/page';
 
@@ -21,10 +21,30 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { PageHeader } from '@/components/PageHeader';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { collection } from 'firebase/firestore';
+import { Button } from '@/components/ui/button';
+import { MoreHorizontal, Download, Trash2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 export type Transaction = {
   id: string;
@@ -41,6 +61,9 @@ export type Transaction = {
 
 export default function TransactionsPage() {
   const firestore = useFirestore();
+  const { toast } = useToast();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
 
   const buildingsCollection = useMemoFirebase(
     () => (firestore ? collection(firestore, 'buildings') : null),
@@ -79,6 +102,31 @@ export default function TransactionsPage() {
     return new Date(date.seconds * 1000).toLocaleString();
   };
 
+  const openDeleteDialog = (transaction: Transaction) => {
+    setTransactionToDelete(transaction);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDelete = () => {
+    if (firestore && transactionToDelete) {
+      const docRef = doc(firestore, 'buildings', transactionToDelete.buildingId, 'transactions', transactionToDelete.id);
+      deleteDocumentNonBlocking(docRef);
+      toast({
+        title: 'Success',
+        description: 'Transaction deleted successfully.',
+      });
+      setDeleteDialogOpen(false);
+      setTransactionToDelete(null);
+    }
+  };
+
+  const handleDownload = (tx: Transaction) => {
+    toast({
+        title: 'Coming Soon!',
+        description: `PDF receipt generation for #${tx.receiptNumber} is not yet available.`,
+    })
+  }
+
   return (
     <>
       <PageHeader title="All Transactions" />
@@ -100,6 +148,7 @@ export default function TransactionsPage() {
                 <TableHead>Details</TableHead>
                 <TableHead>Month</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
+                <TableHead><span className="sr-only">Actions</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -113,11 +162,12 @@ export default function TransactionsPage() {
                     <TableCell><Skeleton className="h-4 w-[180px]" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-[80px] ml-auto" /></TableCell>
+                    <TableCell><Skeleton className="h-9 w-[50px] ml-auto" /></TableCell>
                   </TableRow>
                 ))}
               {error && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-destructive">
+                  <TableCell colSpan={8} className="text-center text-destructive">
                     Error loading transactions: {error.message}
                   </TableCell>
                 </TableRow>
@@ -139,12 +189,34 @@ export default function TransactionsPage() {
                       <TableCell>{tx.title}</TableCell>
                       <TableCell>{tx.month}</TableCell>
                       <TableCell className="text-right font-medium">{formatCurrency(tx.amount)}</TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button aria-haspopup="true" size="icon" variant="ghost">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Toggle menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleDownload(tx)}>
+                                <Download className="mr-2 h-4 w-4" />
+                                Download Receipt
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openDeleteDialog(tx)} className="text-destructive">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
                     </TableRow>
                   )
                 })}
               {!isLoading && !error && sortedTransactions.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground">
                     No transactions found.
                   </TableCell>
                 </TableRow>
@@ -153,6 +225,20 @@ export default function TransactionsPage() {
           </Table>
         </CardContent>
       </Card>
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this transaction record.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
