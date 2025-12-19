@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import {
   Bell,
@@ -7,34 +9,50 @@ import {
   PlusCircle,
   CreditCard,
   LayoutDashboard,
-  ArrowRightLeft
+  ArrowRightLeft,
 } from 'lucide-react';
+import { collectionGroup } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Logo } from '../icons';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import type { Member } from '@/app/(app)/members/page';
 
 
 const navLinks = [
-    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/buildings", label: "Buildings", icon: Building2 },
-    { href: "/members", label: "Members", icon: Users, badge: true },
-    { href: "/maintenance", label: "Maintenance", icon: Wrench },
-    { href: "/transactions", label: "Transactions", icon: ArrowRightLeft },
-    { href: "/extra-collections", label: "Extra Collections", icon: PlusCircle },
-    { href: "/expenses", label: "Expenses", icon: CreditCard },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/buildings', label: 'Buildings', icon: Building2 },
+  { href: '/members', label: 'Members', icon: Users, collection: 'members' },
+  { href: '/maintenance', label: 'Maintenance', icon: Wrench },
+  { href: '/transactions', label: 'Transactions', icon: ArrowRightLeft },
+  { href: '/extra-collections', label: 'Extra Collections', icon: PlusCircle },
+  { href: '/expenses', label: 'Expenses', icon: CreditCard },
 ];
 
 export function AppSidebar() {
-    const pathname = usePathname();
+  const pathname = usePathname();
+  const firestore = useFirestore();
+
+  const membersCollectionGroup = useMemoFirebase(
+    () => (firestore ? collectionGroup(firestore, 'members') : null),
+    [firestore]
+  );
+  
+  const { data: members, isLoading: isLoadingMembers } = useCollection<Member>(membersCollectionGroup);
+  
+  const memberCount = members?.length || 0;
 
   return (
     <div className="hidden border-r bg-card lg:block">
       <div className="flex h-full max-h-screen flex-col gap-2">
         <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-          <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-2 font-semibold"
+          >
             <Logo />
           </Link>
           <Button variant="outline" size="icon" className="ml-auto h-8 w-8">
@@ -44,26 +62,26 @@ export function AppSidebar() {
         </div>
         <div className="flex-1">
           <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-            {navLinks.map(link => {
-                 const isActive = pathname === link.href;
-                 return (
-                    <Link
-                        key={link.href}
-                        href={link.href}
-                        className={cn(
-                            "flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary",
-                            isActive ? "bg-muted text-primary" : "text-muted-foreground"
-                        )}
-                    >
-                        <link.icon className="h-4 w-4" />
-                        {link.label}
-                        {link.badge && (
-                            <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
-                                6
-                            </Badge>
-                        )}
-                    </Link>
-                )
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    'flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary',
+                    isActive ? 'bg-muted text-primary' : 'text-muted-foreground'
+                  )}
+                >
+                  <link.icon className="h-4 w-4" />
+                  {link.label}
+                  {link.collection === 'members' && !isLoadingMembers && memberCount > 0 && (
+                    <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
+                      {memberCount}
+                    </Badge>
+                  )}
+                </Link>
+              );
             })}
           </nav>
         </div>
