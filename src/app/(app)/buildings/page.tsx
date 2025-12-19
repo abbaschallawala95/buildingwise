@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { PlusCircle, MoreHorizontal } from 'lucide-react';
+import { PlusCircle } from 'lucide-react';
 import {
   collection,
-  doc,
 } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 
@@ -24,18 +23,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { PageHeader } from '@/components/PageHeader';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BuildingForm } from '@/components/buildings/BuildingForm';
 import { DeleteBuildingDialog } from '@/components/buildings/DeleteBuildingDialog';
+import { EditBuilding } from '@/components/buildings/EditBuilding';
 
 // Define the shape of a building object
 export type Building = {
@@ -49,9 +41,6 @@ export type Building = {
 export default function BuildingsPage() {
   const firestore = useFirestore();
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
-  const [editingBuilding, setEditingBuilding] = useState<Building | undefined>(undefined);
-  const [deletingBuilding, setDeletingBuilding] = useState<Building | undefined>(undefined);
-
 
   const buildingsCollection = useMemoFirebase(
     () => (firestore ? collection(firestore, 'buildings') : null),
@@ -66,14 +55,6 @@ export default function BuildingsPage() {
 
   const handleAdd = () => {
     setIsAddFormOpen(true);
-  };
-
-  const handleEdit = (building: Building) => {
-    setEditingBuilding(building);
-  };
-
-  const handleDelete = (building: Building) => {
-    setDeletingBuilding(building);
   };
 
   const sortedBuildings = useMemo(() => {
@@ -137,7 +118,7 @@ export default function BuildingsPage() {
                       <Skeleton className="h-4 w-[100px]" />
                     </TableCell>
                     <TableCell>
-                      <Skeleton className="h-9 w-[50px]" />
+                      <Skeleton className="h-9 w-[100px] ml-auto" />
                     </TableCell>
                   </TableRow>
                    <TableRow>
@@ -151,7 +132,7 @@ export default function BuildingsPage() {
                       <Skeleton className="h-4 w-[100px]" />
                     </TableCell>
                     <TableCell>
-                      <Skeleton className="h-9 w-[50px]" />
+                      <Skeleton className="h-9 w-[100px] ml-auto" />
                     </TableCell>
                   </TableRow>
                 </>
@@ -171,20 +152,10 @@ export default function BuildingsPage() {
                     <TableCell>{building.address}</TableCell>
                     <TableCell>{formatCurrency(building.openingBalance || 0)}</TableCell>
                     <TableCell className="text-right">
-                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button aria-haspopup="true" size="icon" variant="ghost">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleEdit(building)}>Edit</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDelete(building)} className="text-destructive">Delete</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                       <div className="flex items-center justify-end gap-2">
+                            <EditBuilding building={building} />
+                            <DeleteBuildingDialog building={building} />
+                        </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -205,28 +176,6 @@ export default function BuildingsPage() {
         isOpen={isAddFormOpen}
         setIsOpen={setIsAddFormOpen}
       />
-      
-      {/* Edit Form - It is its own component that handles its own open state */}
-      {editingBuilding && (
-        <BuildingForm
-            isOpen={!!editingBuilding}
-            setIsOpen={(open) => {
-                if (!open) setEditingBuilding(undefined);
-            }}
-            building={editingBuilding}
-        />
-      )}
-
-      {/* Delete Dialog */}
-      {deletingBuilding && (
-        <DeleteBuildingDialog
-            building={deletingBuilding}
-            isOpen={!!deletingBuilding}
-            setIsOpen={(open) => {
-                if (!open) setDeletingBuilding(undefined);
-            }}
-        />
-      )}
     </>
   );
 }
