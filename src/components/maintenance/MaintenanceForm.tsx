@@ -31,10 +31,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { generatePersonalizedReceiptMessage } from "@/ai/flows/generate-personalized-receipt-message";
-import { Loader2, Wand2 } from "lucide-react";
+import { Loader2, Wand2, Download } from "lucide-react";
 import type { Building } from "@/app/(app)/buildings/page";
 import type { Member } from "@/app/(app)/members/page";
 import type { Transaction } from "@/app/(app)/transactions/page";
+import { downloadReceipt } from "@/lib/receipt-pdf";
 
 const maintenanceSchema = z.object({
   buildingId: z.string().min(1, "Please select a building."),
@@ -119,24 +120,55 @@ export function MaintenanceForm() {
       });
     }
   };
+  
+  const handleDownload = () => {
+    if (!receiptData) return;
+    const member = members?.find(m => m.id === receiptData.memberId);
+    const building = buildings?.find(b => b.id === receiptData.buildingId);
+
+    if (!member || !building) {
+      toast({
+        variant: "destructive",
+        title: 'Error',
+        description: 'Could not find member or building details to generate PDF.',
+      });
+      return;
+    }
+
+    downloadReceipt({
+      transaction: receiptData,
+      member: member,
+      buildingName: building.buildingName,
+      toast: toast,
+    });
+  }
+
 
   const handleGenerateMessage = async () => {
     if (!receiptData) return;
     
     // Find member and building for the message
     const building = buildings?.find(b => b.id === receiptData.buildingId);
-    // This is a known simplification. In a real app you might need to fetch all members if not available.
     const member = members?.find(m => m.id === receiptData.memberId);
+
+    if (!member || !building) {
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not generate message, missing details."
+        });
+        return;
+    }
 
     setIsGenerating(true);
     setGeneratedMessage("");
     try {
       const result = await generatePersonalizedReceiptMessage({
-        buildingName: building?.buildingName || "Your Building",
-        memberName: member?.fullName || "Valued Member",
-        flatNumber: member?.flatNumber || "",
+        buildingName: building.buildingName,
+        memberName: member.fullName,
+        flatNumber: member.flatNumber,
         amount: receiptData.amount,
-        month: receiptData.month, // Already formatted as "Month YYYY"
+        month: receiptData.month,
         receiptNumber: receiptData.receiptNumber,
         paymentMode: receiptData.paymentMode,
       });
@@ -165,7 +197,18 @@ export function MaintenanceForm() {
           <CardTitle>Receipt & Notification</CardTitle>
           <CardDescription>Payment recorded successfully. Receipt No: {receiptData.receiptNumber}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
+           <div>
+             <h3 className="font-semibold">Download Receipt</h3>
+             <p className="text-sm text-muted-foreground">Download a PDF copy of the receipt.</p>
+             <Button onClick={handleDownload} className="mt-2">
+                <Download className="mr-2 h-4 w-4" />
+                Download PDF
+             </Button>
+           </div>
+
+            <Separator />
+           
           <div>
             <h3 className="font-semibold">Send WhatsApp Notification</h3>
             <p className="text-sm text-muted-foreground">Generate a personalized message to send to the member.</p>
