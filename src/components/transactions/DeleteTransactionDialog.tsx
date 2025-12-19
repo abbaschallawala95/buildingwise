@@ -10,7 +10,6 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-    AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { useFirestore, deleteDocumentNonBlocking } from '@/firebase';
@@ -42,15 +41,16 @@ export function DeleteTransactionDialog({ transaction }: DeleteTransactionDialog
 
     return (
         <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
-            <AlertDialogTrigger asChild>
-                <DropdownMenuItem
-                    className="text-destructive"
-                    onSelect={(e) => e.preventDefault()} // Prevents dropdown from closing
-                >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                </DropdownMenuItem>
-            </AlertDialogTrigger>
+            <DropdownMenuItem
+                className="text-destructive"
+                onSelect={(e) => {
+                    e.preventDefault();
+                    setIsOpen(true);
+                }}
+            >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+            </DropdownMenuItem>
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
