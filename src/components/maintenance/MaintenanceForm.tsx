@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm, type SubmitHandler, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { collection, serverTimestamp, doc } from 'firebase/firestore';
+import { collection, serverTimestamp, doc, collectionGroup } from 'firebase/firestore';
 import { useFirestore, useCollection, addDocumentNonBlocking, useMemoFirebase } from '@/firebase';
 import { format, parse, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -77,25 +77,33 @@ export function MaintenanceForm() {
     () => (firestore ? collection(firestore, 'buildings') : null),
     [firestore]
   );
-  const { data: buildings, isLoading: loadingBuildings } = useCollection<Building>(buildingsCollection);
+  const { data: allBuildings, isLoading: loadingBuildings } = useCollection<Building>(buildingsCollection);
   
+  // Fetch members for the selected building for the form dropdown
   const membersInBuildingCollection = useMemoFirebase(
     () => (firestore && buildingId ? collection(firestore, 'buildings', buildingId, 'members') : null),
     [firestore, buildingId]
   );
-  const { data: members, isLoading: loadingMembers } = useCollection<Member>(membersInBuildingCollection);
+  const { data: membersInBuilding, isLoading: loadingMembers } = useCollection<Member>(membersInBuildingCollection);
+
+  // Fetch all members for receipt generation
+  const allMembersCollection = useMemoFirebase(
+    () => (firestore ? collectionGroup(firestore, 'members') : null),
+    [firestore]
+  );
+  const { data: allMembers } = useCollection<Member>(allMembersCollection);
+
 
   const onSubmit: SubmitHandler<MaintenanceFormValues> = async (data) => {
     if (!firestore) return;
     
-    // Parse the "YYYY-MM-DD" string into a Date object to get the month and year
     const monthDate = parseISO(data.month);
     const formattedMonth = format(monthDate, 'MMMM yyyy');
     
     const receiptNumber = `R-${new Date().getFullYear()}${Math.floor(Math.random() * 9000) + 1000}`;
     const transactionData = {
       ...data,
-      month: formattedMonth, // Store as "Month YYYY" string
+      month: formattedMonth,
       type: 'maintenance' as const,
       title: 'Monthly Maintenance',
       receiptNumber: receiptNumber,
@@ -111,7 +119,7 @@ export function MaintenanceForm() {
         description: "Maintenance payment recorded successfully.",
       });
       reset();
-      setValue("month", format(new Date(), 'yyyy-MM-dd')); // Reset date after submission
+      setValue("month", format(new Date(), 'yyyy-MM-dd'));
     } catch (error) {
        toast({
         variant: "destructive",
@@ -123,8 +131,8 @@ export function MaintenanceForm() {
   
   const handleDownload = () => {
     if (!receiptData) return;
-    const member = members?.find(m => m.id === receiptData.memberId);
-    const building = buildings?.find(b => b.id === receiptData.buildingId);
+    const member = allMembers?.find(m => m.id === receiptData.memberId);
+    const building = allBuildings?.find(b => b.id === receiptData.buildingId);
 
     if (!member || !building) {
       toast({
@@ -147,9 +155,8 @@ export function MaintenanceForm() {
   const handleGenerateMessage = async () => {
     if (!receiptData) return;
     
-    // Find member and building for the message
-    const building = buildings?.find(b => b.id === receiptData.buildingId);
-    const member = members?.find(m => m.id === receiptData.memberId);
+    const building = allBuildings?.find(b => b.id === receiptData.buildingId);
+    const member = allMembers?.find(m => m.id === receiptData.memberId);
 
     if (!member || !building) {
         toast({
@@ -274,7 +281,7 @@ export function MaintenanceForm() {
                     <SelectValue placeholder="Select a building" />
                   </SelectTrigger>
                   <SelectContent>
-                    {buildings?.map((building) => (
+                    {allBuildings?.map((building) => (
                       <SelectItem key={building.id} value={building.id}>
                         {building.buildingName}
                       </SelectItem>
@@ -298,10 +305,10 @@ export function MaintenanceForm() {
                   disabled={!buildingId || loadingMembers}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a member" />
+                    <SelectValue placeholder={loadingMembers ? "Loading..." : "Select a member"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {members?.map((member) => (
+                    {membersInBuilding?.map((member) => (
                         <SelectItem key={member.id} value={member.id}>
                           {member.fullName} - {member.flatNumber}
                         </SelectItem>
