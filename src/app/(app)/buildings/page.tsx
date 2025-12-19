@@ -8,6 +8,7 @@ import {
 } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { useToast } from '@/hooks/use-toast';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -58,6 +59,7 @@ export type Building = {
 
 export default function BuildingsPage() {
   const firestore = useFirestore();
+  const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedBuilding, setSelectedBuilding] = useState<Building | undefined>(undefined);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -95,6 +97,10 @@ export default function BuildingsPage() {
       deleteDocumentNonBlocking(docRef);
       setDeleteDialogOpen(false);
       setBuildingToDelete(null);
+      toast({
+        title: 'Success',
+        description: 'Building deleted successfully.',
+      });
     }
   };
 
