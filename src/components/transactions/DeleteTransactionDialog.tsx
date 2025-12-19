@@ -1,0 +1,64 @@
+'use client';
+
+import { useState } from 'react';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { useFirestore, deleteDocumentNonBlocking } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
+import type { Transaction } from '@/app/(app)/transactions/page';
+import { Trash2 } from 'lucide-react';
+
+
+interface DeleteTransactionDialogProps {
+    transaction: Transaction;
+}
+
+export function DeleteTransactionDialog({ transaction }: DeleteTransactionDialogProps) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isOpen, setIsOpen] = useState(false);
+
+    const handleDelete = () => {
+        if (!firestore) return;
+        const docRef = doc(firestore, 'buildings', transaction.buildingId, 'transactions', transaction.id);
+        deleteDocumentNonBlocking(docRef);
+        toast({
+            title: 'Success',
+            description: 'Transaction deleted successfully.',
+        });
+        setIsOpen(false);
+    };
+
+    return (
+        <>
+            <DropdownMenuItem onClick={() => setIsOpen(true)} className="text-destructive">
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+            </DropdownMenuItem>
+            <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete this transaction record.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
+    );
+}

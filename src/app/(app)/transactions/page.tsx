@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { collection, collectionGroup, doc } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { Building } from '@/app/(app)/buildings/page';
 import type { Member } from '@/app/(app)/members/page';
 import { downloadReceipt } from '@/lib/receipt-pdf';
@@ -23,16 +23,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -44,8 +34,9 @@ import { PageHeader } from '@/components/PageHeader';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Download, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { DeleteTransactionDialog } from '@/components/transactions/DeleteTransactionDialog';
 
 export type Transaction = {
   id: string;
@@ -63,8 +54,6 @@ export type Transaction = {
 export default function TransactionsPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
 
   const buildingsCollection = useMemoFirebase(
     () => (firestore ? collection(firestore, 'buildings') : null),
@@ -101,24 +90,6 @@ export default function TransactionsPage() {
   const formatDate = (date: any) => {
     if (!date) return 'N/A';
     return new Date(date.seconds * 1000).toLocaleString();
-  };
-
-  const openDeleteDialog = (transaction: Transaction) => {
-    setTransactionToDelete(transaction);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleDelete = () => {
-    if (firestore && transactionToDelete) {
-      const docRef = doc(firestore, 'buildings', transactionToDelete.buildingId, 'transactions', transactionToDelete.id);
-      deleteDocumentNonBlocking(docRef);
-      toast({
-        title: 'Success',
-        description: 'Transaction deleted successfully.',
-      });
-      setDeleteDialogOpen(false);
-      setTransactionToDelete(null);
-    }
   };
 
   const handleDownload = (tx: Transaction) => {
@@ -219,10 +190,7 @@ export default function TransactionsPage() {
                                 <Download className="mr-2 h-4 w-4" />
                                 Download Receipt
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => openDeleteDialog(tx)} className="text-destructive">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                            </DropdownMenuItem>
+                            <DeleteTransactionDialog transaction={tx} />
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -240,20 +208,6 @@ export default function TransactionsPage() {
           </Table>
         </CardContent>
       </Card>
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete this transaction record.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }
