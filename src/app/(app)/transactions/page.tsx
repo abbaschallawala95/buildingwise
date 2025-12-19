@@ -185,11 +185,11 @@ export default function TransactionsPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => handleDownload(tx)}>
                                 <Download className="mr-2 h-4 w-4" />
                                 Download Receipt
                             </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                             <DeleteTransactionDialog transaction={tx} />
                           </DropdownMenuContent>
                         </DropdownMenu>
