@@ -18,7 +18,6 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogClose,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,18 +57,20 @@ export function BuildingForm({ isOpen, setIsOpen, building }: BuildingFormProps)
   });
 
   useEffect(() => {
-    if (building) {
-      reset({
-        buildingName: building.buildingName,
-        address: building.address,
-        openingBalance: building.openingBalance || 0,
-      });
-    } else {
-      reset({
-        buildingName: '',
-        address: '',
-        openingBalance: 0,
-      });
+    if (isOpen) {
+      if (building) {
+        reset({
+          buildingName: building.buildingName,
+          address: building.address,
+          openingBalance: building.openingBalance || 0,
+        });
+      } else {
+        reset({
+          buildingName: '',
+          address: '',
+          openingBalance: 0,
+        });
+      }
     }
   }, [building, reset, isOpen]);
 

@@ -7,8 +7,6 @@ import {
   doc,
 } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { useToast } from '@/hooks/use-toast';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -34,19 +32,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { PageHeader } from '@/components/PageHeader';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BuildingForm } from '@/components/buildings/BuildingForm';
+import { DeleteBuildingDialog } from '@/components/buildings/DeleteBuildingDialog';
 
 // Define the shape of a building object
 export type Building = {
@@ -59,11 +48,10 @@ export type Building = {
 
 export default function BuildingsPage() {
   const firestore = useFirestore();
-  const { toast } = useToast();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedBuilding, setSelectedBuilding] = useState<Building | undefined>(undefined);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [buildingToDelete, setBuildingToDelete] = useState<Building | null>(null);
+  const [isAddFormOpen, setIsAddFormOpen] = useState(false);
+  const [editingBuilding, setEditingBuilding] = useState<Building | undefined>(undefined);
+  const [deletingBuilding, setDeletingBuilding] = useState<Building | undefined>(undefined);
+
 
   const buildingsCollection = useMemoFirebase(
     () => (firestore ? collection(firestore, 'buildings') : null),
@@ -77,31 +65,15 @@ export default function BuildingsPage() {
   } = useCollection<Building>(buildingsCollection);
 
   const handleAdd = () => {
-    setSelectedBuilding(undefined);
-    setDialogOpen(true);
+    setIsAddFormOpen(true);
   };
 
   const handleEdit = (building: Building) => {
-    setSelectedBuilding(building);
-    setDialogOpen(true);
+    setEditingBuilding(building);
   };
 
-  const openDeleteDialog = (building: Building) => {
-    setBuildingToDelete(building);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleDelete = () => {
-    if (firestore && buildingToDelete) {
-      const docRef = doc(firestore, 'buildings', buildingToDelete.id);
-      deleteDocumentNonBlocking(docRef);
-      setDeleteDialogOpen(false);
-      setBuildingToDelete(null);
-      toast({
-        title: 'Success',
-        description: 'Building deleted successfully.',
-      });
-    }
+  const handleDelete = (building: Building) => {
+    setDeletingBuilding(building);
   };
 
   const sortedBuildings = useMemo(() => {
@@ -210,7 +182,7 @@ export default function BuildingsPage() {
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => handleEdit(building)}>Edit</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openDeleteDialog(building)} className="text-destructive">Delete</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDelete(building)} className="text-destructive">Delete</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -228,26 +200,33 @@ export default function BuildingsPage() {
         </CardContent>
       </Card>
       
+      {/* Add Form */}
       <BuildingForm 
-        isOpen={dialogOpen}
-        setIsOpen={setDialogOpen}
-        building={selectedBuilding}
+        isOpen={isAddFormOpen}
+        setIsOpen={setIsAddFormOpen}
       />
+      
+      {/* Edit Form - It is its own component that handles its own open state */}
+      {editingBuilding && (
+        <BuildingForm
+            isOpen={!!editingBuilding}
+            setIsOpen={(open) => {
+                if (!open) setEditingBuilding(undefined);
+            }}
+            building={editingBuilding}
+        />
+      )}
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the building and all associated data (members, transactions, etc.).
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Delete Dialog */}
+      {deletingBuilding && (
+        <DeleteBuildingDialog
+            building={deletingBuilding}
+            isOpen={!!deletingBuilding}
+            setIsOpen={(open) => {
+                if (!open) setDeletingBuilding(undefined);
+            }}
+        />
+      )}
     </>
   );
 }
