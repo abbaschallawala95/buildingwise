@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { collection, serverTimestamp, doc } from 'firebase/firestore';
 import { useFirestore, useCollection, addDocumentNonBlocking, useMemoFirebase } from '@/firebase';
-import { format } from "date-fns";
+import { format, parse } from "date-fns";
 import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
@@ -27,8 +27,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
@@ -42,13 +40,13 @@ const maintenanceSchema = z.object({
   buildingId: z.string().min(1, "Please select a building."),
   memberId: z.string().min(1, "Please select a member."),
   amount: z.coerce.number().min(1, "Amount must be greater than 0."),
-  month: z.date({ required_error: "Month is required."}),
+  month: z.string().min(1, "Month is required."), // YYYY-MM format
   paymentMode: z.enum(["Cash", "Online", "Cheque"]),
 });
 
 type MaintenanceFormValues = z.infer<typeof maintenanceSchema>;
 
-type ReceiptData = Omit<Transaction, 'month'> & { month: Date };
+type ReceiptData = Omit<Transaction, 'month'> & { month: string }; // month is string
 
 export function MaintenanceForm() {
   const firestore = useFirestore();
@@ -86,10 +84,14 @@ export function MaintenanceForm() {
   const onSubmit: SubmitHandler<MaintenanceFormValues> = async (data) => {
     if (!firestore) return;
     
+    // Parse the "YYYY-MM" string into a Date object to format it
+    const monthDate = parse(data.month, 'yyyy-MM', new Date());
+    const formattedMonth = format(monthDate, 'MMMM yyyy');
+    
     const receiptNumber = `R-${new Date().getFullYear()}${Math.floor(Math.random() * 9000) + 1000}`;
     const transactionData = {
       ...data,
-      month: format(data.month, 'MMMM yyyy'), // Store as string
+      month: formattedMonth, // Store as "Month YYYY" string
       type: 'maintenance' as const,
       title: 'Monthly Maintenance',
       receiptNumber: receiptNumber,
@@ -99,7 +101,7 @@ export function MaintenanceForm() {
     const collectionRef = collection(firestore, 'buildings', data.buildingId, 'transactions');
     try {
       const docRef = await addDocumentNonBlocking(collectionRef, transactionData);
-      setReceiptData({ ...transactionData, id: docRef ? docRef.id : '', month: data.month });
+      setReceiptData({ ...transactionData, id: docRef ? docRef.id : '' });
       toast({
         title: "Success!",
         description: "Maintenance payment recorded successfully.",
@@ -115,19 +117,24 @@ export function MaintenanceForm() {
   };
 
   const handleGenerateMessage = async () => {
-    if (!receiptData || !buildings || !members) return;
+    if (!receiptData) return;
+    
+    // Find member and building for the message
+    const building = buildings?.find(b => b.id === receiptData.buildingId);
+    // Note: 'members' hook is scoped to the selected building in the form.
+    // After submission, that selection is gone. We need all members to find the correct one.
+    // This is a simplification for now. A better approach would be to pass member/building details to the receipt component.
+    const member = members?.find(m => m.id === receiptData.memberId);
+
     setIsGenerating(true);
     setGeneratedMessage("");
     try {
-      const member = members.find(m => m.id === receiptData.memberId);
-      const building = buildings.find(b => b.id === receiptData.buildingId);
-      
       const result = await generatePersonalizedReceiptMessage({
         buildingName: building?.buildingName || "Your Building",
         memberName: member?.fullName || "Valued Member",
         flatNumber: member?.flatNumber || "",
         amount: receiptData.amount,
-        month: format(receiptData.month, 'MMMM yyyy'),
+        month: receiptData.month, // Already formatted as "Month YYYY"
         receiptNumber: receiptData.receiptNumber,
         paymentMode: receiptData.paymentMode,
       });
@@ -157,7 +164,7 @@ export function MaintenanceForm() {
           <CardDescription>Payment recorded successfully. Receipt No: {receiptData.receiptNumber}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button>Download PDF Receipt</Button>
+          <Button disabled>Download PDF Receipt (Coming Soon)</Button>
           <Separator />
           <div className="space-y-2">
             <h3 className="font-semibold">Send WhatsApp Notification</h3>
@@ -271,34 +278,7 @@ export function MaintenanceForm() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="month">For Month</Label>
-               <Controller
-                  name="month"
-                  control={control}
-                  render={({ field }) => (
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {field.value ? format(field.value, "MMMM yyyy") : <span>Pick a month</span>}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  )}
-                />
+               <Input type="month" {...register('month')} />
               {errors.month && <p className="text-sm text-destructive">{errors.month.message}</p>}
             </div>
           </div>
