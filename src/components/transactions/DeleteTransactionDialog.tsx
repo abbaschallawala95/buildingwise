@@ -41,7 +41,7 @@ export function DeleteTransactionDialog({ transaction }: DeleteTransactionDialog
 
     return (
         <>
-            <DropdownMenuItem onClick={() => setIsOpen(true)} className="text-destructive">
+            <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={() => setIsOpen(true)} className="text-destructive">
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete
             </DropdownMenuItem>

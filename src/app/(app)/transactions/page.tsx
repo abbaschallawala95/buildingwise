@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
-import { collection, collectionGroup, doc } from 'firebase/firestore';
+import React, { useMemo } from 'react';
+import { collection, collectionGroup } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { Building } from '@/app/(app)/buildings/page';
 import type { Member } from '@/app/(app)/members/page';
