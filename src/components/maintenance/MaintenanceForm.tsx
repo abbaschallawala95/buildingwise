@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { collection, serverTimestamp, doc } from 'firebase/firestore';
 import { useFirestore, useCollection, addDocumentNonBlocking, useMemoFirebase } from '@/firebase';
-import { format, parse } from "date-fns";
+import { format, parse, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { generatePersonalizedReceiptMessage } from "@/ai/flows/generate-personalized-receipt-message";
-import { Loader2, Wand2, CalendarIcon } from "lucide-react";
+import { Loader2, Wand2 } from "lucide-react";
 import type { Building } from "@/app/(app)/buildings/page";
 import type { Member } from "@/app/(app)/members/page";
 import type { Transaction } from "@/app/(app)/transactions/page";
@@ -40,7 +40,7 @@ const maintenanceSchema = z.object({
   buildingId: z.string().min(1, "Please select a building."),
   memberId: z.string().min(1, "Please select a member."),
   amount: z.coerce.number().min(1, "Amount must be greater than 0."),
-  month: z.string().min(1, "Month is required."), // YYYY-MM format
+  month: z.string().min(1, "Date is required."), // YYYY-MM-DD format
   paymentMode: z.enum(["Cash", "Online", "Cheque"]),
 });
 
@@ -65,6 +65,9 @@ export function MaintenanceForm() {
     control,
   } = useForm<MaintenanceFormValues>({
     resolver: zodResolver(maintenanceSchema),
+    defaultValues: {
+      month: format(new Date(), 'yyyy-MM-dd'),
+    }
   });
 
   const buildingId = watch("buildingId");
@@ -84,8 +87,8 @@ export function MaintenanceForm() {
   const onSubmit: SubmitHandler<MaintenanceFormValues> = async (data) => {
     if (!firestore) return;
     
-    // Parse the "YYYY-MM" string into a Date object to format it
-    const monthDate = parse(data.month, 'yyyy-MM', new Date());
+    // Parse the "YYYY-MM-DD" string into a Date object to get the month and year
+    const monthDate = parseISO(data.month);
     const formattedMonth = format(monthDate, 'MMMM yyyy');
     
     const receiptNumber = `R-${new Date().getFullYear()}${Math.floor(Math.random() * 9000) + 1000}`;
@@ -107,6 +110,7 @@ export function MaintenanceForm() {
         description: "Maintenance payment recorded successfully.",
       });
       reset();
+      setValue("month", format(new Date(), 'yyyy-MM-dd')); // Reset date after submission
     } catch (error) {
        toast({
         variant: "destructive",
@@ -121,9 +125,7 @@ export function MaintenanceForm() {
     
     // Find member and building for the message
     const building = buildings?.find(b => b.id === receiptData.buildingId);
-    // Note: 'members' hook is scoped to the selected building in the form.
-    // After submission, that selection is gone. We need all members to find the correct one.
-    // This is a simplification for now. A better approach would be to pass member/building details to the receipt component.
+    // This is a known simplification. In a real app you might need to fetch all members if not available.
     const member = members?.find(m => m.id === receiptData.memberId);
 
     setIsGenerating(true);
@@ -164,9 +166,7 @@ export function MaintenanceForm() {
           <CardDescription>Payment recorded successfully. Receipt No: {receiptData.receiptNumber}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button disabled>Download PDF Receipt (Coming Soon)</Button>
-          <Separator />
-          <div className="space-y-2">
+          <div>
             <h3 className="font-semibold">Send WhatsApp Notification</h3>
             <p className="text-sm text-muted-foreground">Generate a personalized message to send to the member.</p>
             
@@ -175,11 +175,11 @@ export function MaintenanceForm() {
                 value={generatedMessage}
                 onChange={(e) => setGeneratedMessage(e.target.value)}
                 rows={6}
-                className="bg-muted"
+                className="bg-muted mt-2"
               />
             )}
             
-            <Button onClick={handleGenerateMessage} disabled={isGenerating}>
+            <Button onClick={handleGenerateMessage} disabled={isGenerating} className="mt-2">
               {isGenerating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -277,8 +277,8 @@ export function MaintenanceForm() {
               {errors.amount && <p className="text-sm text-destructive">{errors.amount.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="month">For Month</Label>
-               <Input type="month" {...register('month')} />
+              <Label htmlFor="month">Payment Date</Label>
+               <Input type="date" {...register('month')} />
               {errors.month && <p className="text-sm text-destructive">{errors.month.message}</p>}
             </div>
           </div>
