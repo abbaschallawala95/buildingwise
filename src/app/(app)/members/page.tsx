@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { PlusCircle, MoreHorizontal } from 'lucide-react';
-import { collection, doc, collectionGroup } from 'firebase/firestore';
+import { PlusCircle } from 'lucide-react';
+import { collection, collectionGroup } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { Building } from '@/app/(app)/buildings/page';
 
@@ -22,19 +22,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { PageHeader } from '@/components/PageHeader';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { MemberForm } from '@/components/members/MemberForm';
-import { DeleteMemberDialog } from '@/components/members/DeleteMemberDialog';
+import { DeleteMember } from '@/components/members/DeleteMember';
+import { EditMember } from '@/components/members/EditMember';
 import type { Transaction } from '../transactions/page';
 
 export type Member = {
@@ -55,8 +48,6 @@ export type Member = {
 export default function MembersPage() {
   const firestore = useFirestore();
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
-  const [editingMember, setEditingMember] = useState<Member | undefined>(undefined);
-  const [deletingMember, setDeletingMember] = useState<Member | undefined>(undefined);
 
   // Firestore collections
   const buildingsCollection = useMemoFirebase(
@@ -94,14 +85,6 @@ export default function MembersPage() {
 
   const handleAdd = () => {
     setIsAddFormOpen(true);
-  };
-
-  const handleEdit = (member: Member) => {
-    setEditingMember(member);
-  };
-
-  const handleDelete = (member: Member) => {
-    setDeletingMember(member);
   };
 
   const formatCurrency = (amount: number) =>
@@ -239,20 +222,10 @@ export default function MembersPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button aria-haspopup="true" size="icon" variant="ghost">
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Toggle menu</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleEdit(member)}>Edit</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDelete(member)} className="text-destructive">Delete</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="flex items-center justify-end gap-2">
+                            <EditMember member={member} buildings={buildings || []} />
+                            <DeleteMember member={member} />
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -275,29 +248,6 @@ export default function MembersPage() {
         setIsOpen={setIsAddFormOpen}
         buildings={buildings || []}
       />
-
-      {/* Edit Form */}
-      {editingMember && (
-        <MemberForm
-          isOpen={!!editingMember}
-          setIsOpen={(open) => {
-            if (!open) setEditingMember(undefined);
-          }}
-          member={editingMember}
-          buildings={buildings || []}
-        />
-      )}
-
-      {/* Delete Dialog */}
-      {deletingMember && (
-        <DeleteMemberDialog
-          member={deletingMember}
-          isOpen={!!deletingMember}
-          setIsOpen={(open) => {
-            if (!open) setDeletingMember(undefined);
-          }}
-        />
-      )}
     </>
   );
 }
