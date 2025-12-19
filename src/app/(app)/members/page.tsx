@@ -4,7 +4,6 @@ import React, { useState, useMemo } from 'react';
 import { PlusCircle, MoreHorizontal } from 'lucide-react';
 import { collection, doc, collectionGroup } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { Building } from '@/app/(app)/buildings/page';
 
 import { Button } from '@/components/ui/button';
@@ -31,20 +30,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { PageHeader } from '@/components/PageHeader';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { MemberForm } from '@/components/members/MemberForm';
+import { DeleteMemberDialog } from '@/components/members/DeleteMemberDialog';
 import type { Transaction } from '../transactions/page';
 
 export type Member = {
@@ -64,10 +54,9 @@ export type Member = {
 
 export default function MembersPage() {
   const firestore = useFirestore();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<Member | undefined>(undefined);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [memberToDelete, setMemberToDelete] = useState<Member | null>(null);
+  const [isAddFormOpen, setIsAddFormOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<Member | undefined>(undefined);
+  const [deletingMember, setDeletingMember] = useState<Member | undefined>(undefined);
 
   // Firestore collections
   const buildingsCollection = useMemoFirebase(
@@ -104,27 +93,15 @@ export default function MembersPage() {
   const isLoading = isLoadingBuildings || isLoadingMembers || isLoadingTransactions;
 
   const handleAdd = () => {
-    setSelectedMember(undefined);
-    setDialogOpen(true);
+    setIsAddFormOpen(true);
   };
 
   const handleEdit = (member: Member) => {
-    setSelectedMember(member);
-    setDialogOpen(true);
+    setEditingMember(member);
   };
 
-  const openDeleteDialog = (member: Member) => {
-    setMemberToDelete(member);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleDelete = () => {
-    if (firestore && memberToDelete) {
-      const docRef = doc(firestore, 'buildings', memberToDelete.buildingId, 'members', memberToDelete.id);
-      deleteDocumentNonBlocking(docRef);
-      setDeleteDialogOpen(false);
-      setMemberToDelete(null);
-    }
+  const handleDelete = (member: Member) => {
+    setDeletingMember(member);
   };
 
   const formatCurrency = (amount: number) =>
@@ -271,8 +248,9 @@ export default function MembersPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => handleEdit(member)}>Edit</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => openDeleteDialog(member)} className="text-destructive">Delete</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDelete(member)} className="text-destructive">Delete</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -291,27 +269,35 @@ export default function MembersPage() {
         </CardContent>
       </Card>
 
+      {/* Add Form */}
       <MemberForm 
-        isOpen={dialogOpen}
-        setIsOpen={setDialogOpen}
-        member={selectedMember}
+        isOpen={isAddFormOpen}
+        setIsOpen={setIsAddFormOpen}
         buildings={buildings || []}
       />
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the member from the building.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Edit Form */}
+      {editingMember && (
+        <MemberForm
+          isOpen={!!editingMember}
+          setIsOpen={(open) => {
+            if (!open) setEditingMember(undefined);
+          }}
+          member={editingMember}
+          buildings={buildings || []}
+        />
+      )}
+
+      {/* Delete Dialog */}
+      {deletingMember && (
+        <DeleteMemberDialog
+          member={deletingMember}
+          isOpen={!!deletingMember}
+          setIsOpen={(open) => {
+            if (!open) setDeletingMember(undefined);
+          }}
+        />
+      )}
     </>
   );
 }

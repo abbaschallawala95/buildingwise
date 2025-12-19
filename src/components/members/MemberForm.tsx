@@ -135,7 +135,7 @@ export function MemberForm({ isOpen, setIsOpen, member, buildings }: MemberFormP
 
     try {
       if (member) {
-        const docRef = doc(firestore, 'buildings', member.buildingId, 'members', member.id);
+        const docRef = doc(firestore, 'buildings', data.buildingId, 'members', member.id);
         updateDocumentNonBlocking(docRef, dataToSave);
         toast({
           title: 'Success',
