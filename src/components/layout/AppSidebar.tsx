@@ -11,6 +11,8 @@ import {
   LayoutDashboard,
   ArrowRightLeft,
   Settings,
+  ListX,
+  Tags,
 } from 'lucide-react';
 import { collectionGroup } from 'firebase/firestore';
 
@@ -31,7 +33,9 @@ const navLinks = [
   { href: '/transactions', label: 'Transactions', icon: ArrowRightLeft },
   { href: '/extra-collections', label: 'Extra Collections', icon: PlusCircle },
   { href: '/expenses', label: 'Expenses', icon: CreditCard },
+  { href: '/dues', label: 'Dues', icon: ListX },
   { href: '/expense-types', label: 'Expense Types', icon: Settings },
+  { href: '/due-types', label: 'Due Types', icon: Tags },
 ];
 
 export function AppSidebar() {

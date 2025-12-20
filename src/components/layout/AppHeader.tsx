@@ -11,6 +11,8 @@ import {
   LayoutDashboard,
   ArrowRightLeft,
   Settings,
+  ListX,
+  Tags,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 
@@ -29,7 +31,9 @@ const navLinks = [
     { href: "/transactions", label: "Transactions", icon: ArrowRightLeft },
     { href: "/extra-collections", label: "Extra Collections", icon: PlusCircle },
     { href: "/expenses", label: "Expenses", icon: CreditCard },
+    { href: "/dues", label: "Dues", icon: ListX },
     { href: "/expense-types", label: "Expense Types", icon: Settings },
+    { href: "/due-types", label: "Due Types", icon: Tags },
 ];
 
 function HeaderContent() {
@@ -98,9 +102,13 @@ export function AppHeader() {
     setMounted(true);
   }, []);
 
+  if (!mounted) {
+    return <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6" />;
+  }
+
   return (
     <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
-      {mounted ? <HeaderContent /> : null}
+      <HeaderContent />
     </header>
   );
 }

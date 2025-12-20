@@ -283,6 +283,93 @@
         "totalAmount",
         "date"
       ]
+    },
+    "Due": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Due",
+      "type": "object",
+      "description": "Represents a specific due amount for a member.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the due."
+        },
+        "buildingId": {
+          "type": "string",
+          "description": "Reference to the Building."
+        },
+        "memberId": {
+          "type": "string",
+          "description": "Reference to the Member."
+        },
+        "title": {
+          "type": "string",
+          "description": "A descriptive title for the due."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type or category of the due (e.g., 'Late Fee')."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The amount of the due."
+        },
+        "dueDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date by which the due should be paid."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "unpaid",
+            "paid"
+          ],
+          "description": "The payment status of the due."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp indicating when the due was created."
+        }
+      },
+      "required": [
+        "id",
+        "buildingId",
+        "memberId",
+        "title",
+        "type",
+        "amount",
+        "dueDate",
+        "status",
+        "createdAt"
+      ]
+    },
+    "DueType": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Due Type",
+      "type": "object",
+      "description": "Represents a category for dues.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the due type."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the due category (e.g., Late Fee)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp indicating when the type was created."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "createdAt"
+      ]
     }
   },
   "auth": {
@@ -404,8 +491,44 @@
             }
           ]
         }
+      },
+      {
+        "path": "/dueTypes/{dueTypeId}",
+        "definition": {
+          "entityName": "DueType",
+          "schema": {
+            "$ref": "#/backend/entities/DueType"
+          },
+          "description": "Stores the list of available due categories for all buildings.",
+          "params": [
+            {
+              "name": "dueTypeId",
+              "description": "Unique identifier for the due type."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/buildings/{buildingId}/dues/{dueId}",
+        "definition": {
+          "entityName": "Due",
+          "schema": {
+            "$ref": "#/backend/entities/Due"
+          },
+          "description": "Stores due details for a specific building and member.",
+          "params": [
+            {
+              "name": "buildingId",
+              "description": "Unique identifier for the building."
+            },
+            {
+              "name": "dueId",
+              "description": "Unique identifier for the due."
+            }
+          ]
+        }
       }
     ],
-    "reasoning": "The Firestore structure is designed to enable secure and efficient CRUD operations for the BuildingWise application, focusing on authorization independence and clear access control.  The structure follows a hierarchical approach with Buildings at the top level, and Members, Transactions, and Expenses as subcollections.  This structure aligns with the principle of Path-Based Ownership where each entity is owned by the Building to which it belongs. All subcollections include the `buildingId` as a denormalized field.  This denormalization is CRITICAL for Authorization Independence, as it avoids `get()` calls in security rules to verify building ownership.  The structure supports the required QAPs by segregating data per building, which simplifies list operations (rules are not filters)."
+    "reasoning": "The Firestore structure is designed to enable secure and efficient CRUD operations for the BuildingWise application, focusing on authorization independence and clear access control.  The structure follows a hierarchical approach with Buildings at the top level, and Members, Transactions, Dues, and Expenses as subcollections.  This structure aligns with the principle of Path-Based Ownership where each entity is owned by the Building to which it belongs. All subcollections include the `buildingId` as a denormalized field.  This denormalization is CRITICAL for Authorization Independence, as it avoids `get()` calls in security rules to verify building ownership.  The structure supports the required QAPs by segregating data per building, which simplifies list operations (rules are not filters)."
   }
 }
