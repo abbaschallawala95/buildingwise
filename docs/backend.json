@@ -190,7 +190,7 @@
         },
         "expenseType": {
           "type": "string",
-          "description": "Type of expense (light, lift, water, repair, other)."
+          "description": "Type of expense (e.g., Light Bill, Lift Maintenance, etc.)."
         },
         "description": {
           "type": "string",
@@ -213,6 +213,32 @@
         "description",
         "amount",
         "expenseDate"
+      ]
+    },
+    "ExpenseType": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Expense Type",
+      "type": "object",
+      "description": "Represents a category for expenses.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the expense type."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the expense category (e.g., Lift Maintenance)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp indicating when the type was created."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "createdAt"
       ]
     },
     "ExtraCollection": {
@@ -362,10 +388,24 @@
             }
           ]
         }
+      },
+      {
+        "path": "/expenseTypes/{expenseTypeId}",
+        "definition": {
+          "entityName": "ExpenseType",
+          "schema": {
+            "$ref": "#/backend/entities/ExpenseType"
+          },
+          "description": "Stores the list of available expense categories for all buildings.",
+          "params": [
+            {
+              "name": "expenseTypeId",
+              "description": "Unique identifier for the expense type."
+            }
+          ]
+        }
       }
     ],
     "reasoning": "The Firestore structure is designed to enable secure and efficient CRUD operations for the BuildingWise application, focusing on authorization independence and clear access control.  The structure follows a hierarchical approach with Buildings at the top level, and Members, Transactions, and Expenses as subcollections.  This structure aligns with the principle of Path-Based Ownership where each entity is owned by the Building to which it belongs. All subcollections include the `buildingId` as a denormalized field.  This denormalization is CRITICAL for Authorization Independence, as it avoids `get()` calls in security rules to verify building ownership.  The structure supports the required QAPs by segregating data per building, which simplifies list operations (rules are not filters)."
   }
 }
-
-    

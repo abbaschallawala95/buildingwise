@@ -46,11 +46,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { ExpenseForm } from '@/components/expenses/ExpenseForm';
 import { collection } from 'firebase/firestore';
+import type { ExpenseType } from '@/components/expenses/AddExpenseTypeDialog';
 
 export type Expense = {
   id: string;
   buildingId: string;
-  expenseType: 'light' | 'lift' | 'water' | 'repair' | 'other';
+  expenseType: string;
   description: string;
   amount: number;
   expenseDate: any; // Can be a string or a Firestore Timestamp
@@ -74,6 +75,11 @@ export default function ExpensesPage() {
     [firestore]
   );
   
+  const expenseTypesCollection = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'expenseTypes') : null),
+    [firestore]
+  );
+  
   const {
     data: buildings,
     isLoading: isLoadingBuildings,
@@ -85,7 +91,13 @@ export default function ExpensesPage() {
     error 
   } = useCollection<Expense>(expensesCollectionGroup);
 
-  const isLoading = isLoadingBuildings || isLoadingExpenses;
+  const {
+    data: expenseTypes,
+    isLoading: isLoadingExpenseTypes,
+  } = useCollection<ExpenseType>(expenseTypesCollection);
+
+
+  const isLoading = isLoadingBuildings || isLoadingExpenses || isLoadingExpenseTypes;
 
   const handleAdd = () => {
     setSelectedExpense(undefined);
@@ -234,6 +246,7 @@ export default function ExpensesPage() {
         setIsOpen={setDialogOpen}
         expense={selectedExpense}
         buildings={buildings || []}
+        expenseTypes={expenseTypes || []}
       />
       
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

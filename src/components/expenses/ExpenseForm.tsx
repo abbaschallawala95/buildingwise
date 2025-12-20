@@ -27,16 +27,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, CalendarIcon } from 'lucide-react';
+import { Loader2, CalendarIcon, PlusCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
 import type { Expense } from '@/app/(app)/expenses/page';
 import type { Building } from '@/app/(app)/buildings/page';
+import { AddExpenseTypeDialog, type ExpenseType } from './AddExpenseTypeDialog';
 
 const expenseSchema = z.object({
   buildingId: z.string().min(1, 'Please select a building.'),
-  expenseType: z.enum(['light', 'lift', 'water', 'repair', 'other']),
+  expenseType: z.string().min(1, 'Please select an expense type.'),
   description: z.string().min(3, 'Description must be at least 3 characters.'),
   amount: z.coerce.number().min(1, 'Amount must be greater than 0.'),
   expenseDate: z.date({
@@ -51,11 +52,14 @@ interface ExpenseFormProps {
   setIsOpen: (open: boolean) => void;
   expense?: Expense;
   buildings: Building[];
+  expenseTypes: ExpenseType[];
 }
 
-export function ExpenseForm({ isOpen, setIsOpen, expense, buildings }: ExpenseFormProps) {
+export function ExpenseForm({ isOpen, setIsOpen, expense, buildings, expenseTypes }: ExpenseFormProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
+  const [addTypeOpen, setAddTypeOpen] = useState(false);
+
   const {
     register,
     handleSubmit,
@@ -83,7 +87,7 @@ export function ExpenseForm({ isOpen, setIsOpen, expense, buildings }: ExpenseFo
         } else {
           reset({
             buildingId: '',
-            expenseType: 'other',
+            expenseType: '',
             description: '',
             amount: 0,
             expenseDate: new Date(),
@@ -139,6 +143,7 @@ export function ExpenseForm({ isOpen, setIsOpen, expense, buildings }: ExpenseFo
   };
   
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -171,21 +176,24 @@ export function ExpenseForm({ isOpen, setIsOpen, expense, buildings }: ExpenseFo
             </div>
              <div className="grid gap-2">
                 <Label htmlFor="expenseType">Expense Type</Label>
-                <Select
-                    onValueChange={(value) => setValue('expenseType', value as any)}
-                    defaultValue={expense?.expenseType || 'other'}
-                >
-                    <SelectTrigger>
-                        <SelectValue placeholder="Select an expense type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="light">Light Bill</SelectItem>
-                        <SelectItem value="lift">Lift Maintenance</SelectItem>
-                        <SelectItem value="water">Water Bill</SelectItem>
-                        <SelectItem value="repair">Repair</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                </Select>
+                 <div className="flex gap-2">
+                    <Select
+                        onValueChange={(value) => setValue('expenseType', value as any)}
+                        defaultValue={expense?.expenseType}
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select an expense type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {expenseTypes.map(type => (
+                                <SelectItem key={type.id} value={type.name}>{type.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Button type="button" variant="outline" size="icon" onClick={() => setAddTypeOpen(true)}>
+                        <PlusCircle className="h-4 w-4" />
+                    </Button>
+                 </div>
                 {errors.expenseType && <p className="text-sm text-destructive">{errors.expenseType.message}</p>}
             </div>
             <div className="grid gap-2">
@@ -239,5 +247,7 @@ export function ExpenseForm({ isOpen, setIsOpen, expense, buildings }: ExpenseFo
         </form>
       </DialogContent>
     </Dialog>
+    <AddExpenseTypeDialog isOpen={addTypeOpen} setIsOpen={setAddTypeOpen} />
+    </>
   );
 }
