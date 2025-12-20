@@ -99,40 +99,43 @@ export default function MembersPage() {
   }
 
   const calculateTotalDues = (member: Member) => {
-    // If no start date, we can't calculate monthly dues. Return only previous dues.
-    if (!member.maintenanceStartDate) {
+    if (!member.maintenanceStartDate?.toDate) {
       return member.previousDues || 0;
     }
-      
+  
     const memberTransactions = transactions?.filter(t => t.memberId === member.id && t.type === 'maintenance') || [];
-    
     let totalDues = member.previousDues || 0;
-    
+  
     const startDate = member.maintenanceStartDate.toDate();
-    const endDate = member.maintenanceEndDate ? member.maintenanceEndDate.toDate() : new Date();
     const today = new Date();
-
-    // Iterate from start month to current month
-    let currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
-    
-    while (currentDate <= endDate && currentDate <= today) {
-        const dueDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), member.monthlyDueDate);
-        
-        // If due date for this month has passed
-        if (today > dueDate) {
-            const monthYearString = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
-            
-            // Check if payment was made for this month
-            const paidForMonth = memberTransactions.some(t => t.month && t.month.toLowerCase() === monthYearString.toLowerCase());
-
-            if (!paidForMonth) {
-                totalDues += member.monthlyMaintenance;
-            }
+    // Use midnight of today for consistent date comparisons
+    const todayAtMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  
+    const endDate = member.maintenanceEndDate?.toDate ? member.maintenanceEndDate.toDate() : todayAtMidnight;
+  
+    // Start iterating from the first day of the start month
+    let iteratorDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+  
+    while (iteratorDate <= endDate) {
+      // Create the due date for the current month in the loop
+      const currentMonthDueDate = new Date(iteratorDate.getFullYear(), iteratorDate.getMonth(), member.monthlyDueDate);
+  
+      // Only consider dues for months that have already started and where the due date has passed
+      if (iteratorDate <= todayAtMidnight && currentMonthDueDate < todayAtMidnight) {
+        const monthYearString = iteratorDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+  
+        // Check if a payment was made for this specific month
+        const paidForMonth = memberTransactions.some(t => t.month && t.month.toLowerCase() === monthYearString.toLowerCase());
+  
+        if (!paidForMonth) {
+          totalDues += member.monthlyMaintenance;
         }
-        
-        currentDate.setMonth(currentDate.getMonth() + 1);
+      }
+  
+      // Move to the next month
+      iteratorDate.setMonth(iteratorDate.getMonth() + 1);
     }
-    
+  
     return totalDues;
   };
 
