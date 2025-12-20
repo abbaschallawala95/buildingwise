@@ -24,18 +24,19 @@ export default function DashboardPage() {
     [firestore]
   );
   
-  // Temporarily disable slow queries
-  const membersCollectionGroup = null;
+  const membersCollectionGroup = useMemoFirebase(
+    () => (firestore ? collectionGroup(firestore, 'members') : null),
+    [firestore]
+  );
   const transactionsCollectionGroup = null;
   const expensesCollectionGroup = null;
 
 
   const { data: buildings, isLoading: loadingBuildings } = useCollection<Building>(buildingsCollection);
+  const { data: members, isLoading: loadingMembers } = useCollection<Member>(membersCollectionGroup);
   // Temporarily use empty arrays for disabled queries
-  const members: Member[] | null = [];
   const transactions: Transaction[] | null = [];
   const expenses: Expense[] | null = [];
-  const loadingMembers = false;
   const loadingTransactions = false;
   const loadingExpenses = false;
 
