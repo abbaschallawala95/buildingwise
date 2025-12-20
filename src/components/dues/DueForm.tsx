@@ -24,12 +24,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, CalendarIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { Loader2 } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 
 import type { Due } from '@/app/(app)/dues/page';
 import type { Building } from '@/app/(app)/buildings/page';
@@ -42,12 +39,12 @@ const dueSchema = z.object({
   type: z.string().min(1, 'Please select a due type.'),
   title: z.string().min(3, 'Title must be at least 3 characters.'),
   amount: z.coerce.number().min(1, 'Amount must be greater than 0.'),
-  dueDate: z.date({ required_error: "A due date is required." }),
+  dueDate: z.string().min(1, "A due date is required."),
   status: z.enum(['unpaid', 'paid']),
-  paymentDate: z.date().optional(),
+  paymentDate: z.string().optional(),
 }).refine(data => {
     if (data.status === 'paid') {
-        return !!data.paymentDate;
+        return !!data.paymentDate && data.paymentDate.length > 0;
     }
     return true;
 }, {
@@ -86,8 +83,6 @@ export function DueForm({ isOpen, setIsOpen, due, buildings, members, dueTypes }
     }
   });
 
-  const dueDate = watch('dueDate');
-  const paymentDate = watch('paymentDate');
   const selectedBuildingId = watch('buildingId');
   const status = watch('status');
 
@@ -95,9 +90,10 @@ export function DueForm({ isOpen, setIsOpen, due, buildings, members, dueTypes }
     return members.filter(member => member.buildingId === selectedBuildingId);
   }, [members, selectedBuildingId]);
 
-  const toDateOrUndefined = (fsTimestamp: any) => {
-    if (!fsTimestamp) return undefined;
-    return fsTimestamp.toDate ? fsTimestamp.toDate() : new Date(fsTimestamp);
+  const toInputDate = (fsTimestamp: any) => {
+    if (!fsTimestamp) return '';
+    const d = fsTimestamp.toDate ? fsTimestamp.toDate() : new Date(fsTimestamp);
+    return format(d, 'yyyy-MM-dd');
   };
   
   useEffect(() => {
@@ -109,9 +105,9 @@ export function DueForm({ isOpen, setIsOpen, due, buildings, members, dueTypes }
             type: due.type,
             title: due.title,
             amount: due.amount,
-            dueDate: toDateOrUndefined(due.dueDate),
+            dueDate: toInputDate(due.dueDate),
             status: due.status,
-            paymentDate: toDateOrUndefined(due.paymentDate),
+            paymentDate: toInputDate(due.paymentDate),
           });
         } else {
           reset({
@@ -120,9 +116,9 @@ export function DueForm({ isOpen, setIsOpen, due, buildings, members, dueTypes }
             type: '',
             title: '',
             amount: 0,
-            dueDate: new Date(),
+            dueDate: format(new Date(), 'yyyy-MM-dd'),
             status: 'unpaid',
-            paymentDate: undefined,
+            paymentDate: '',
           });
         }
     }
@@ -138,13 +134,14 @@ export function DueForm({ isOpen, setIsOpen, due, buildings, members, dueTypes }
       return;
     }
 
-    const dataToSave: Partial<Due> & { [key: string]: any } = {
+    const dataToSave: { [key: string]: any } = {
       ...data,
-      dueDate: Timestamp.fromDate(data.dueDate),
-      paymentDate: data.paymentDate ? Timestamp.fromDate(data.paymentDate) : null,
+      dueDate: Timestamp.fromDate(parseISO(data.dueDate)),
     };
     
-    if (data.status === 'unpaid') {
+    if (data.status === 'paid' && data.paymentDate) {
+        dataToSave.paymentDate = Timestamp.fromDate(parseISO(data.paymentDate));
+    } else {
         dataToSave.paymentDate = null;
     }
 
@@ -283,56 +280,14 @@ export function DueForm({ isOpen, setIsOpen, due, buildings, members, dueTypes }
             </div>
              <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                    <Label htmlFor="dueDate">Due Date</Label>
-                     <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !dueDate && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {dueDate ? format(dueDate, "PPP") : <span>Pick a date</span>}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={dueDate}
-                            onSelect={(date) => setValue('dueDate', date as Date)}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                    <Label>Due Date</Label>
+                    <Input type="date" {...register('dueDate')} />
                     {errors.dueDate && <p className="text-sm text-destructive">{errors.dueDate.message}</p>}
                 </div>
                 {status === 'paid' && (
                   <div className="grid gap-2">
-                      <Label htmlFor="paymentDate">Payment Date</Label>
-                       <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full justify-start text-left font-normal",
-                                !paymentDate && "text-muted-foreground"
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {paymentDate ? format(paymentDate, "PPP") : <span>Pick a date</span>}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
-                            <Calendar
-                              mode="single"
-                              selected={paymentDate}
-                              onSelect={(date) => setValue('paymentDate', date)}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
+                      <Label>Payment Date</Label>
+                      <Input type="date" {...register('paymentDate')} />
                       {errors.paymentDate && <p className="text-sm text-destructive">{errors.paymentDate.message}</p>}
                   </div>
                 )}
