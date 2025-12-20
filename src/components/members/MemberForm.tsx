@@ -63,6 +63,7 @@ export function MemberForm({ isOpen, setIsOpen, member, buildings }: MemberFormP
     handleSubmit,
     reset,
     control,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<MemberFormValues>({
     resolver: zodResolver(memberSchema),
@@ -176,10 +177,9 @@ export function MemberForm({ isOpen, setIsOpen, member, buildings }: MemberFormP
             <div className="grid gap-2">
                 <Label htmlFor="buildingId">Building</Label>
                 <Select
-                    onValueChange={(value) => control.getValues().buildingId = value}
+                    onValueChange={(value) => setValue('buildingId', value)}
                     defaultValue={member?.buildingId}
                     disabled={!!member}
-                    {...register('buildingId')}
                 >
                     <SelectTrigger>
                         <SelectValue placeholder="Select a building" />
