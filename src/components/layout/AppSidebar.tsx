@@ -10,6 +10,7 @@ import {
   CreditCard,
   LayoutDashboard,
   ArrowRightLeft,
+  Settings,
 } from 'lucide-react';
 import { collectionGroup } from 'firebase/firestore';
 
@@ -30,6 +31,7 @@ const navLinks = [
   { href: '/transactions', label: 'Transactions', icon: ArrowRightLeft },
   { href: '/extra-collections', label: 'Extra Collections', icon: PlusCircle },
   { href: '/expenses', label: 'Expenses', icon: CreditCard },
+  { href: '/expense-types', label: 'Expense Types', icon: Settings },
 ];
 
 export function AppSidebar() {

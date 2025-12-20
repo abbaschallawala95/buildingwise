@@ -9,7 +9,8 @@ import {
   PlusCircle,
   CreditCard,
   LayoutDashboard,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Settings,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 
@@ -28,6 +29,7 @@ const navLinks = [
     { href: "/transactions", label: "Transactions", icon: ArrowRightLeft },
     { href: "/extra-collections", label: "Extra Collections", icon: PlusCircle },
     { href: "/expenses", label: "Expenses", icon: CreditCard },
+    { href: "/expense-types", label: "Expense Types", icon: Settings },
 ];
 
 function HeaderContent() {
