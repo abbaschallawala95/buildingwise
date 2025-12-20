@@ -12,11 +12,9 @@ interface DownloadReceiptProps {
 
 const formatDate = (date: any) => {
     if (!date) return 'N/A';
-    if (date.seconds) { // Firestore Timestamp
-      return new Date(date.seconds * 1000).toLocaleString();
-    }
-    // For serverTimestamp which is null initially, or for already recorded transactions.
-    return new Date().toLocaleString(); 
+    // Handle Firestore Timestamp or standard JS Date object
+    const d = date.seconds ? new Date(date.seconds * 1000) : new Date(date);
+    return d.toLocaleDateString();
 };
 
 const formatCurrency = (amount: number) =>
@@ -39,7 +37,7 @@ export function downloadReceipt({ transaction: tx, member, buildingName, toast }
     // Details
     doc.setFontSize(12);
     doc.text(`Receipt No: ${tx.receiptNumber}`, 15, 45);
-    doc.text(`Date: ${formatDate(tx.createdAt)}`, 195, 45, { align: 'right' });
+    doc.text(`Payment Date: ${formatDate(tx.paymentDate)}`, 195, 45, { align: 'right' });
 
     doc.line(15, 50, 195, 50);
 
@@ -81,3 +79,5 @@ export function downloadReceipt({ transaction: tx, member, buildingName, toast }
         description: `Your PDF receipt for #${tx.receiptNumber} is being downloaded.`,
     });
 }
+
+    

@@ -48,6 +48,7 @@ export type Transaction = {
   month: string;
   paymentMode: 'Cash' | 'Online' | 'Cheque';
   receiptNumber: string;
+  paymentDate: any; // Firestore Timestamp
   createdAt: any; // Firestore Timestamp
 };
 
@@ -89,7 +90,10 @@ export default function TransactionsPage() {
 
   const formatDate = (date: any) => {
     if (!date) return 'N/A';
-    return new Date(date.seconds * 1000).toLocaleString();
+    if (date.seconds) { // Firestore Timestamp
+      return new Date(date.seconds * 1000).toLocaleDateString();
+    }
+    return new Date(date).toLocaleDateString();
   };
 
   const handleDownload = (tx: Transaction) => {
@@ -127,7 +131,7 @@ export default function TransactionsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
+                <TableHead>Payment Date</TableHead>
                 <TableHead>Member</TableHead>
                 <TableHead>Building</TableHead>
                 <TableHead>Type</TableHead>
@@ -164,7 +168,7 @@ export default function TransactionsPage() {
                   const member = memberMap.get(tx.memberId);
                   return (
                     <TableRow key={tx.id}>
-                      <TableCell>{formatDate(tx.createdAt)}</TableCell>
+                      <TableCell>{formatDate(tx.paymentDate)}</TableCell>
                       <TableCell>{member ? `${member.fullName} (${member.flatNumber})` : '...'}</TableCell>
                       <TableCell>{buildingMap.get(tx.buildingId) || '...'}</TableCell>
                       <TableCell>
@@ -211,3 +215,5 @@ export default function TransactionsPage() {
     </>
   );
 }
+
+    

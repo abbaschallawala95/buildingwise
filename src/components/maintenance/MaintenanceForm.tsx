@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useForm, type SubmitHandler, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { collection, serverTimestamp, doc, collectionGroup } from 'firebase/firestore';
+import { collection, serverTimestamp, doc, collectionGroup, Timestamp } from 'firebase/firestore';
 import { useFirestore, useCollection, addDocumentNonBlocking, useMemoFirebase } from '@/firebase';
 import { format, parse, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -41,13 +41,13 @@ const maintenanceSchema = z.object({
   buildingId: z.string().min(1, "Please select a building."),
   memberId: z.string().min(1, "Please select a member."),
   amount: z.coerce.number().min(1, "Amount must be greater than 0."),
-  month: z.string().min(1, "Date is required."), // YYYY-MM-DD format
+  paymentDate: z.string().min(1, "Date is required."), // YYYY-MM-DD format
   paymentMode: z.enum(["Cash", "Online", "Cheque"]),
 });
 
 type MaintenanceFormValues = z.infer<typeof maintenanceSchema>;
 
-type ReceiptData = Omit<Transaction, 'month'> & { month: string }; // month is string
+type ReceiptData = Omit<Transaction, 'month' | 'paymentDate'> & { month: string, paymentDate: any }; // month is string
 
 export function MaintenanceForm() {
   const firestore = useFirestore();
@@ -67,7 +67,7 @@ export function MaintenanceForm() {
   } = useForm<MaintenanceFormValues>({
     resolver: zodResolver(maintenanceSchema),
     defaultValues: {
-      month: format(new Date(), 'yyyy-MM-dd'),
+      paymentDate: format(new Date(), 'yyyy-MM-dd'),
     }
   });
 
@@ -79,14 +79,12 @@ export function MaintenanceForm() {
   );
   const { data: allBuildings, isLoading: loadingBuildings } = useCollection<Building>(buildingsCollection);
   
-  // Fetch members for the selected building for the form dropdown
   const membersInBuildingCollection = useMemoFirebase(
     () => (firestore && buildingId ? collection(firestore, 'buildings', buildingId, 'members') : null),
     [firestore, buildingId]
   );
   const { data: membersInBuilding, isLoading: loadingMembers } = useCollection<Member>(membersInBuildingCollection);
 
-  // Fetch all members for receipt generation
   const allMembersCollection = useMemoFirebase(
     () => (firestore ? collectionGroup(firestore, 'members') : null),
     [firestore]
@@ -97,13 +95,18 @@ export function MaintenanceForm() {
   const onSubmit: SubmitHandler<MaintenanceFormValues> = async (data) => {
     if (!firestore) return;
     
-    const monthDate = parseISO(data.month);
-    const formattedMonth = format(monthDate, 'MMMM yyyy');
+    const paymentDate = parseISO(data.paymentDate);
+    const formattedMonth = format(paymentDate, 'MMMM yyyy');
     
     const receiptNumber = `R-${new Date().getFullYear()}${Math.floor(Math.random() * 9000) + 1000}`;
+    
     const transactionData = {
-      ...data,
+      buildingId: data.buildingId,
+      memberId: data.memberId,
+      amount: data.amount,
+      paymentMode: data.paymentMode,
       month: formattedMonth,
+      paymentDate: Timestamp.fromDate(paymentDate),
       type: 'maintenance' as const,
       title: 'Monthly Maintenance',
       receiptNumber: receiptNumber,
@@ -113,13 +116,14 @@ export function MaintenanceForm() {
     const collectionRef = collection(firestore, 'buildings', data.buildingId, 'transactions');
     try {
       const docRef = await addDocumentNonBlocking(collectionRef, transactionData);
-      setReceiptData({ ...transactionData, id: docRef ? docRef.id : '' });
+      // For receiptData, we use the JS Date object for immediate use in PDF/message
+      setReceiptData({ ...transactionData, id: docRef ? docRef.id : '', paymentDate: paymentDate });
       toast({
         title: "Success!",
         description: "Maintenance payment recorded successfully.",
       });
       reset();
-      setValue("month", format(new Date(), 'yyyy-MM-dd'));
+      setValue("paymentDate", format(new Date(), 'yyyy-MM-dd'));
     } catch (error) {
        toast({
         variant: "destructive",
@@ -327,9 +331,9 @@ export function MaintenanceForm() {
               {errors.amount && <p className="text-sm text-destructive">{errors.amount.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="month">Payment Date</Label>
-               <Input type="date" {...register('month')} />
-              {errors.month && <p className="text-sm text-destructive">{errors.month.message}</p>}
+              <Label htmlFor="paymentDate">Payment Date</Label>
+               <Input type="date" {...register('paymentDate')} />
+              {errors.paymentDate && <p className="text-sm text-destructive">{errors.paymentDate.message}</p>}
             </div>
           </div>
 
@@ -364,3 +368,5 @@ export function MaintenanceForm() {
     </Card>
   );
 }
+
+    
