@@ -132,15 +132,8 @@ export default function MembersPage() {
         
         currentDate.setMonth(currentDate.getMonth() + 1);
     }
-
-    // Subtract paid amounts
-    // This simple subtraction is not quite right if a member overpays, but it's a start.
-    // A more complex ledger system would be needed for full accuracy.
-    const actualPaid = memberTransactions.reduce((acc, t) => acc + t.amount, 0);
-    const duesAfterPayments = totalDues - actualPaid;
-
-
-    return duesAfterPayments > 0 ? duesAfterPayments : 0;
+    
+    return totalDues;
   };
 
 
