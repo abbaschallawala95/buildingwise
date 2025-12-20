@@ -65,7 +65,7 @@ export default function StatCards({ members, transactions, expenses, buildings, 
       <StatCard title="Total Expenses" value={formatCurrency(totalExpenses)} icon={CreditCard} change="-3.4%" changeType="decrease" isLoading={isLoading} />
       <StatCard title="Extra Collections" value={formatCurrency(totalExtraCollections)} icon={TrendingUp} isLoading={isLoading} />
       <StatCard title="Pending Dues" value={formatCurrency(pendingDues)} icon={TrendingDown} isLoading={isLoading} />
-      <StatCard title="Total Members" value={`+${totalMembers}`} icon={Users} isLoading={isLoading} />
+      <StatCard title="Total Members" value={`${totalMembers}`} icon={Users} isLoading={isLoading} />
     </div>
   );
 }
