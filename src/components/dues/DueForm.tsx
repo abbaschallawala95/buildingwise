@@ -44,7 +44,17 @@ const dueSchema = z.object({
   amount: z.coerce.number().min(1, 'Amount must be greater than 0.'),
   dueDate: z.date({ required_error: "A due date is required." }),
   status: z.enum(['unpaid', 'paid']),
+  paymentDate: z.date().optional(),
+}).refine(data => {
+    if (data.status === 'paid') {
+        return !!data.paymentDate;
+    }
+    return true;
+}, {
+    message: 'Payment date is required when status is "Paid".',
+    path: ['paymentDate'],
 });
+
 
 type DueFormValues = z.infer<typeof dueSchema>;
 
@@ -77,12 +87,19 @@ export function DueForm({ isOpen, setIsOpen, due, buildings, members, dueTypes }
   });
 
   const dueDate = watch('dueDate');
+  const paymentDate = watch('paymentDate');
   const selectedBuildingId = watch('buildingId');
+  const status = watch('status');
 
   const membersInBuilding = useMemo(() => {
     return members.filter(member => member.buildingId === selectedBuildingId);
   }, [members, selectedBuildingId]);
 
+  const toDateOrUndefined = (fsTimestamp: any) => {
+    if (!fsTimestamp) return undefined;
+    return fsTimestamp.toDate ? fsTimestamp.toDate() : new Date(fsTimestamp);
+  };
+  
   useEffect(() => {
     if (isOpen) {
         if (due) {
@@ -92,8 +109,9 @@ export function DueForm({ isOpen, setIsOpen, due, buildings, members, dueTypes }
             type: due.type,
             title: due.title,
             amount: due.amount,
-            dueDate: due.dueDate.toDate ? due.dueDate.toDate() : new Date(due.dueDate),
+            dueDate: toDateOrUndefined(due.dueDate),
             status: due.status,
+            paymentDate: toDateOrUndefined(due.paymentDate),
           });
         } else {
           reset({
@@ -104,6 +122,7 @@ export function DueForm({ isOpen, setIsOpen, due, buildings, members, dueTypes }
             amount: 0,
             dueDate: new Date(),
             status: 'unpaid',
+            paymentDate: undefined,
           });
         }
     }
@@ -119,10 +138,16 @@ export function DueForm({ isOpen, setIsOpen, due, buildings, members, dueTypes }
       return;
     }
 
-    const dataToSave = {
+    const dataToSave: Partial<Due> & { [key: string]: any } = {
       ...data,
       dueDate: Timestamp.fromDate(data.dueDate),
+      paymentDate: data.paymentDate ? Timestamp.fromDate(data.paymentDate) : null,
     };
+    
+    if (data.status === 'unpaid') {
+        dataToSave.paymentDate = null;
+    }
+
 
     try {
       if (due) {
@@ -239,6 +264,24 @@ export function DueForm({ isOpen, setIsOpen, due, buildings, members, dueTypes }
                     <Input id="amount" type="number" {...register('amount')} />
                     {errors.amount && <p className="text-sm text-destructive">{errors.amount.message}</p>}
                 </div>
+                 <div className="grid gap-2">
+                    <Label htmlFor="status">Status</Label>
+                    <Select
+                        onValueChange={(value) => setValue('status', value as 'unpaid' | 'paid')}
+                        defaultValue={due?.status || 'unpaid'}
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value='unpaid'>Unpaid</SelectItem>
+                            <SelectItem value='paid'>Paid</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    {errors.status && <p className="text-sm text-destructive">{errors.status.message}</p>}
+                </div>
+            </div>
+             <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                     <Label htmlFor="dueDate">Due Date</Label>
                      <Popover>
@@ -265,22 +308,34 @@ export function DueForm({ isOpen, setIsOpen, due, buildings, members, dueTypes }
                       </Popover>
                     {errors.dueDate && <p className="text-sm text-destructive">{errors.dueDate.message}</p>}
                 </div>
-            </div>
-             <div className="grid gap-2">
-                <Label htmlFor="status">Status</Label>
-                <Select
-                    onValueChange={(value) => setValue('status', value as 'unpaid' | 'paid')}
-                    defaultValue={due?.status || 'unpaid'}
-                >
-                    <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value='unpaid'>Unpaid</SelectItem>
-                        <SelectItem value='paid'>Paid</SelectItem>
-                    </SelectContent>
-                </Select>
-                {errors.status && <p className="text-sm text-destructive">{errors.status.message}</p>}
+                {status === 'paid' && (
+                  <div className="grid gap-2">
+                      <Label htmlFor="paymentDate">Payment Date</Label>
+                       <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !paymentDate && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {paymentDate ? format(paymentDate, "PPP") : <span>Pick a date</span>}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0">
+                            <Calendar
+                              mode="single"
+                              selected={paymentDate}
+                              onSelect={(date) => setValue('paymentDate', date)}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      {errors.paymentDate && <p className="text-sm text-destructive">{errors.paymentDate.message}</p>}
+                  </div>
+                )}
             </div>
           </div>
           <DialogFooter className="pt-4">

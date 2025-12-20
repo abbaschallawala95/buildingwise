@@ -57,6 +57,7 @@ export type Due = {
   type: string;
   amount: number;
   dueDate: any; // Firestore Timestamp
+  paymentDate?: any; // Firestore Timestamp
   status: 'unpaid' | 'paid';
   createdAt?: any;
 };
@@ -172,6 +173,7 @@ export default function DuesPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Due Date</TableHead>
+                <TableHead>Payment Date</TableHead>
                 <TableHead>Member</TableHead>
                 <TableHead>Building</TableHead>
                 <TableHead>Type</TableHead>
@@ -186,6 +188,7 @@ export default function DuesPage() {
                 Array.from({ length: 3 }).map((_, i) => (
                   <TableRow key={i}>
                     <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-[150px]" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-[70px]" /></TableCell>
@@ -197,7 +200,7 @@ export default function DuesPage() {
                 ))}
               {error && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-destructive">
+                  <TableCell colSpan={9} className="text-center text-destructive">
                     Error loading dues: {error.message}
                   </TableCell>
                 </TableRow>
@@ -207,6 +210,7 @@ export default function DuesPage() {
                 sortedDues.map((due) => (
                   <TableRow key={due.id}>
                     <TableCell>{formatDate(due.dueDate)}</TableCell>
+                    <TableCell>{due.status === 'paid' ? formatDate(due.paymentDate) : 'N/A'}</TableCell>
                     <TableCell>{getMemberName(due.memberId)}</TableCell>
                     <TableCell>{buildingMap.get(due.buildingId) || '...'}</TableCell>
                     <TableCell>
@@ -238,7 +242,7 @@ export default function DuesPage() {
                 ))}
               {!isLoading && !error && sortedDues.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground">
                     No dues found. Click "New Due" to get started.
                   </TableCell>
                 </TableRow>

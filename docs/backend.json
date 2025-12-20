@@ -319,6 +319,11 @@
           "format": "date-time",
           "description": "The date by which the due should be paid."
         },
+        "paymentDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date the payment was made."
+        },
         "status": {
           "type": "string",
           "enum": [
