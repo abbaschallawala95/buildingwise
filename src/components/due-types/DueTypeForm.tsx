@@ -5,7 +5,7 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { collection, doc, serverTimestamp } from 'firebase/firestore';
-import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking, useAuth } from '@/firebase';
 
 import {
   Dialog,
@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
 import type { DueType } from '@/app/(app)/due-types/page';
+import { createLog } from '@/lib/logger';
 
 const dueTypeSchema = z.object({
   name: z.string().min(3, 'Category name must be at least 3 characters long.'),
@@ -37,6 +38,7 @@ interface DueTypeFormProps {
 
 export function DueTypeForm({ isOpen, setIsOpen, dueType }: DueTypeFormProps) {
   const firestore = useFirestore();
+  const auth = useAuth();
   const { toast } = useToast();
   const {
     register,
@@ -72,6 +74,12 @@ export function DueTypeForm({ isOpen, setIsOpen, dueType }: DueTypeFormProps) {
         // Update existing
         const docRef = doc(firestore, 'dueTypes', dueType.id);
         updateDocumentNonBlocking(docRef, data);
+        createLog(firestore, auth, {
+            action: 'updated',
+            entityType: 'Due Type',
+            entityId: dueType.id,
+            description: `Updated due type: ${data.name}`,
+        });
         toast({
           title: 'Success',
           description: 'Due type updated successfully.',
@@ -79,10 +87,18 @@ export function DueTypeForm({ isOpen, setIsOpen, dueType }: DueTypeFormProps) {
       } else {
         // Add new
         const collectionRef = collection(firestore, 'dueTypes');
-        addDocumentNonBlocking(collectionRef, {
+        const newDoc = await addDocumentNonBlocking(collectionRef, {
           ...data,
           createdAt: serverTimestamp(),
         });
+        if (newDoc) {
+            createLog(firestore, auth, {
+                action: 'created',
+                entityType: 'Due Type',
+                entityId: newDoc.id,
+                description: `Created new due type: ${data.name}`,
+            });
+        }
         toast({
           title: 'Success',
           description: 'Due type added successfully.',

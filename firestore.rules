@@ -59,11 +59,25 @@ service cloud.firestore {
      * @principle Restricts access to a user's own data tree.
      */
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
       allow delete: if isExistingOwner(userId);
+    }
+    
+    /**
+     * @description Controls access to audit logs.
+     * @path /logs/{logId}
+     * @allow (read) Any authenticated user can read logs.
+     * @allow (create) Any authenticated user can create logs (as actions are performed).
+     * @deny (update, delete) Logs are immutable.
+     */
+    match /logs/{logId} {
+        allow get: if isSignedIn();
+        allow list: if isSignedIn();
+        allow create: if isSignedIn();
+        allow update, delete: if false;
     }
     
     // Rules for Collection Group Queries
@@ -177,5 +191,3 @@ service cloud.firestore {
     }
   }
 }
-
-    

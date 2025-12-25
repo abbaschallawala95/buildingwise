@@ -10,7 +10,7 @@ import {
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore';
-import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking, useAuth } from '@/firebase';
 
 import {
   Dialog,
@@ -31,6 +31,7 @@ import { format, parseISO } from 'date-fns';
 
 import type { Member } from '@/app/(app)/members/page';
 import type { Building } from '@/app/(app)/buildings/page';
+import { createLog } from '@/lib/logger';
 
 const memberSchema = z.object({
   buildingId: z.string().min(1, 'Please select a building.'),
@@ -56,6 +57,7 @@ interface MemberFormProps {
 
 export function MemberForm({ isOpen, setIsOpen, member, buildings }: MemberFormProps) {
   const firestore = useFirestore();
+  const auth = useAuth();
   const { toast } = useToast();
   
   const {
@@ -138,16 +140,30 @@ export function MemberForm({ isOpen, setIsOpen, member, buildings }: MemberFormP
       if (member) {
         const docRef = doc(firestore, 'buildings', data.buildingId, 'members', member.id);
         updateDocumentNonBlocking(docRef, dataToSave);
+        createLog(firestore, auth, {
+            action: 'updated',
+            entityType: 'Member',
+            entityId: member.id,
+            description: `Updated member: ${data.fullName}`,
+        });
         toast({
           title: 'Success',
           description: 'Member updated successfully.',
         });
       } else {
         const collectionRef = collection(firestore, 'buildings', data.buildingId, 'members');
-        addDocumentNonBlocking(collectionRef, {
+        const newDoc = await addDocumentNonBlocking(collectionRef, {
             ...dataToSave,
             createdAt: serverTimestamp(),
         });
+        if (newDoc) {
+            createLog(firestore, auth, {
+                action: 'created',
+                entityType: 'Member',
+                entityId: newDoc.id,
+                description: `Created new member: ${data.fullName}`,
+            });
+        }
         toast({
           title: 'Success',
           description: 'Member added successfully.',

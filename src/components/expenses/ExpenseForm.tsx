@@ -10,7 +10,7 @@ import {
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore';
-import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking, useAuth } from '@/firebase';
 
 import {
   Dialog,
@@ -34,6 +34,7 @@ import { format } from 'date-fns';
 import type { Expense } from '@/app/(app)/expenses/page';
 import type { Building } from '@/app/(app)/buildings/page';
 import type { ExpenseType } from '@/app/(app)/expense-types/page';
+import { createLog } from '@/lib/logger';
 
 const expenseSchema = z.object({
   buildingId: z.string().min(1, 'Please select a building.'),
@@ -57,6 +58,7 @@ interface ExpenseFormProps {
 
 export function ExpenseForm({ isOpen, setIsOpen, expense, buildings, expenseTypes }: ExpenseFormProps) {
   const firestore = useFirestore();
+  const auth = useAuth();
   const { toast } = useToast();
 
   const {
@@ -115,6 +117,12 @@ export function ExpenseForm({ isOpen, setIsOpen, expense, buildings, expenseType
         // Update existing expense
         const docRef = doc(firestore, 'buildings', expense.buildingId, 'expenses', expense.id);
         updateDocumentNonBlocking(docRef, dataToSave);
+        createLog(firestore, auth, {
+            action: 'updated',
+            entityType: 'Expense',
+            entityId: expense.id,
+            description: `Updated expense: ${data.description}`,
+        });
         toast({
           title: 'Success',
           description: 'Expense updated successfully.',
@@ -122,10 +130,18 @@ export function ExpenseForm({ isOpen, setIsOpen, expense, buildings, expenseType
       } else {
         // Add new expense to the subcollection of the selected building
         const collectionRef = collection(firestore, 'buildings', data.buildingId, 'expenses');
-        addDocumentNonBlocking(collectionRef, {
+        const newDoc = await addDocumentNonBlocking(collectionRef, {
             ...dataToSave,
             createdAt: serverTimestamp(),
         });
+        if (newDoc) {
+            createLog(firestore, auth, {
+                action: 'created',
+                entityType: 'Expense',
+                entityId: newDoc.id,
+                description: `Created new expense: ${data.description}`,
+            });
+        }
         toast({
           title: 'Success',
           description: 'Expense added successfully.',

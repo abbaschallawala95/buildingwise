@@ -13,11 +13,12 @@ import {
     AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { useFirestore, deleteDocumentNonBlocking } from '@/firebase';
+import { useFirestore, deleteDocumentNonBlocking, useAuth } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import type { Member } from '@/app/(app)/members/page';
 import { Trash2 } from 'lucide-react';
+import { createLog } from '@/lib/logger';
 
 
 interface DeleteMemberProps {
@@ -26,6 +27,7 @@ interface DeleteMemberProps {
 
 export function DeleteMember({ member }: DeleteMemberProps) {
     const firestore = useFirestore();
+    const auth = useAuth();
     const { toast } = useToast();
     const [isOpen, setIsOpen] = useState(false);
 
@@ -33,6 +35,12 @@ export function DeleteMember({ member }: DeleteMemberProps) {
         if (!firestore) return;
         const docRef = doc(firestore, 'buildings', member.buildingId, 'members', member.id);
         deleteDocumentNonBlocking(docRef);
+        createLog(firestore, auth, {
+            action: 'deleted',
+            entityType: 'Member',
+            entityId: member.id,
+            description: `Deleted member: ${member.fullName}`,
+        });
         toast({
             title: 'Success',
             description: 'Member deleted successfully.',

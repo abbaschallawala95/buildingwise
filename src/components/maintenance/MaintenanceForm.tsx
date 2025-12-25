@@ -5,7 +5,7 @@ import { useForm, type SubmitHandler, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { collection, serverTimestamp, doc, collectionGroup, Timestamp } from 'firebase/firestore';
-import { useFirestore, useCollection, addDocumentNonBlocking, useMemoFirebase } from '@/firebase';
+import { useFirestore, useCollection, addDocumentNonBlocking, useMemoFirebase, useAuth } from '@/firebase';
 import { format, parse, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +36,7 @@ import type { Building } from "@/app/(app)/buildings/page";
 import type { Member } from "@/app/(app)/members/page";
 import type { Transaction } from "@/app/(app)/transactions/page";
 import { downloadReceipt } from "@/lib/receipt-pdf";
+import { createLog } from "@/lib/logger";
 
 const maintenanceSchema = z.object({
   buildingId: z.string().min(1, "Please select a building."),
@@ -51,6 +52,7 @@ type ReceiptData = Omit<Transaction, 'month' | 'paymentDate'> & { month: string,
 
 export function MaintenanceForm() {
   const firestore = useFirestore();
+  const auth = useAuth();
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedMessage, setGeneratedMessage] = useState("");
@@ -116,8 +118,16 @@ export function MaintenanceForm() {
     const collectionRef = collection(firestore, 'buildings', data.buildingId, 'transactions');
     try {
       const docRef = await addDocumentNonBlocking(collectionRef, transactionData);
-      // For receiptData, we use the JS Date object for immediate use in PDF/message
-      setReceiptData({ ...transactionData, id: docRef ? docRef.id : '', paymentDate: paymentDate });
+      if (docRef) {
+          const member = allMembers?.find(m => m.id === data.memberId);
+          createLog(firestore, auth, {
+            action: 'created',
+            entityType: 'Transaction',
+            entityId: docRef.id,
+            description: `Recorded maintenance for ${member?.fullName || 'N/A'} of ${data.amount}`,
+          });
+          setReceiptData({ ...transactionData, id: docRef.id, paymentDate: paymentDate });
+      }
       toast({
         title: "Success!",
         description: "Maintenance payment recorded successfully.",
@@ -368,5 +378,3 @@ export function MaintenanceForm() {
     </Card>
   );
 }
-
-    

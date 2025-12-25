@@ -12,11 +12,12 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
-import { useFirestore, deleteDocumentNonBlocking } from '@/firebase';
+import { useFirestore, deleteDocumentNonBlocking, useAuth } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import type { Transaction } from '@/app/(app)/transactions/page';
 import { Trash2 } from 'lucide-react';
+import { createLog } from '@/lib/logger';
 
 
 interface DeleteTransactionDialogProps {
@@ -25,6 +26,7 @@ interface DeleteTransactionDialogProps {
 
 export function DeleteTransactionDialog({ transaction }: DeleteTransactionDialogProps) {
     const firestore = useFirestore();
+    const auth = useAuth();
     const { toast } = useToast();
     const [isOpen, setIsOpen] = useState(false);
 
@@ -32,6 +34,12 @@ export function DeleteTransactionDialog({ transaction }: DeleteTransactionDialog
         if (!firestore) return;
         const docRef = doc(firestore, 'buildings', transaction.buildingId, 'transactions', transaction.id);
         deleteDocumentNonBlocking(docRef);
+         createLog(firestore, auth, {
+            action: 'deleted',
+            entityType: 'Transaction',
+            entityId: transaction.id,
+            description: `Deleted transaction: ${transaction.title} for ${transaction.amount}`,
+        });
         toast({
             title: 'Success',
             description: 'Transaction deleted successfully.',

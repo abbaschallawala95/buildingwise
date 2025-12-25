@@ -15,6 +15,7 @@ import {
   Tags,
   BookText,
   UserCircle,
+  History,
 } from 'lucide-react';
 import { collectionGroup } from 'firebase/firestore';
 
@@ -37,6 +38,7 @@ const navLinks = [
   { href: '/expenses', label: 'Expenses', icon: CreditCard },
   { href: '/dues', label: 'Dues', icon: ListX },
   { href: '/reports', label: 'Reports', icon: BookText },
+  { href: '/logs', label: 'Logs', icon: History },
   { href: '/expense-types', label: 'Expense Types', icon: Settings },
   { href: '/due-types', label: 'Due Types', icon: Tags },
 ];
@@ -117,5 +119,3 @@ export function AppSidebar() {
     </div>
   );
 }
-
-    

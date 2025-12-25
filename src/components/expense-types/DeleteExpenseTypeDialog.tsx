@@ -13,11 +13,12 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { useFirestore, deleteDocumentNonBlocking } from '@/firebase';
+import { useFirestore, deleteDocumentNonBlocking, useAuth } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import type { ExpenseType } from '@/app/(app)/expense-types/page';
 import { Trash2 } from 'lucide-react';
+import { createLog } from '@/lib/logger';
 
 interface DeleteExpenseTypeDialogProps {
   expenseType: ExpenseType;
@@ -25,6 +26,7 @@ interface DeleteExpenseTypeDialogProps {
 
 export function DeleteExpenseTypeDialog({ expenseType }: DeleteExpenseTypeDialogProps) {
   const firestore = useFirestore();
+  const auth = useAuth();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -32,6 +34,12 @@ export function DeleteExpenseTypeDialog({ expenseType }: DeleteExpenseTypeDialog
     if (!firestore) return;
     const docRef = doc(firestore, 'expenseTypes', expenseType.id);
     deleteDocumentNonBlocking(docRef);
+    createLog(firestore, auth, {
+        action: 'deleted',
+        entityType: 'Expense Type',
+        entityId: expenseType.id,
+        description: `Deleted expense type: ${expenseType.name}`,
+    });
     toast({
       title: 'Success',
       description: 'Expense type deleted successfully.',

@@ -9,7 +9,7 @@ import {
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore';
-import { useFirestore, addDocumentNonBlocking } from '@/firebase';
+import { useFirestore, addDocumentNonBlocking, useAuth } from '@/firebase';
 
 import {
   Dialog,
@@ -32,6 +32,7 @@ import { format } from 'date-fns';
 
 import type { ExtraCollection } from '@/app/(app)/extra-collections/page';
 import type { Building } from '@/app/(app)/buildings/page';
+import { createLog } from '@/lib/logger';
 
 const extraCollectionSchema = z.object({
   buildingId: z.string().min(1, 'Please select a building.'),
@@ -53,6 +54,7 @@ interface ExtraCollectionFormProps {
 
 export function ExtraCollectionForm({ isOpen, setIsOpen, collection: existingCollection, buildings }: ExtraCollectionFormProps) {
   const firestore = useFirestore();
+  const auth = useAuth();
   const { toast } = useToast();
   const {
     register,
@@ -114,10 +116,18 @@ export function ExtraCollectionForm({ isOpen, setIsOpen, collection: existingCol
       } else {
         // Add new collection to the subcollection of the selected building
         const collectionRef = collection(firestore, 'buildings', data.buildingId, 'extraCollections');
-        addDocumentNonBlocking(collectionRef, {
+        const newDoc = await addDocumentNonBlocking(collectionRef, {
             ...dataToSave,
             createdAt: serverTimestamp(),
         });
+        if (newDoc) {
+            createLog(firestore, auth, {
+                action: 'created',
+                entityType: 'Extra Collection',
+                entityId: newDoc.id,
+                description: `Created extra collection: ${data.title}`,
+            });
+        }
         toast({
           title: 'Success',
           description: 'Extra collection added successfully.',

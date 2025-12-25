@@ -9,7 +9,7 @@ import {
   doc,
   serverTimestamp,
 } from 'firebase/firestore';
-import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking, useAuth } from '@/firebase';
 
 import {
   Dialog,
@@ -26,6 +26,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
 import type { Building } from '@/app/(app)/buildings/page';
+import { createLog } from '@/lib/logger';
 
 const buildingSchema = z.object({
   buildingName: z.string().min(3, 'Building name must be at least 3 characters long.'),
@@ -43,6 +44,7 @@ interface BuildingFormProps {
 
 export function BuildingForm({ isOpen, setIsOpen, building }: BuildingFormProps) {
   const firestore = useFirestore();
+  const auth = useAuth();
   const { toast } = useToast();
   const {
     register,
@@ -89,6 +91,12 @@ export function BuildingForm({ isOpen, setIsOpen, building }: BuildingFormProps)
         // Update existing building
         const docRef = doc(firestore, 'buildings', building.id);
         updateDocumentNonBlocking(docRef, data);
+        createLog(firestore, auth, {
+            action: 'updated',
+            entityType: 'Building',
+            entityId: building.id,
+            description: `Updated building: ${data.buildingName}`,
+        });
         toast({
           title: 'Success',
           description: 'Building updated successfully.',
@@ -96,10 +104,18 @@ export function BuildingForm({ isOpen, setIsOpen, building }: BuildingFormProps)
       } else {
         // Add new building
         const collectionRef = collection(firestore, 'buildings');
-        addDocumentNonBlocking(collectionRef, {
+        const newDoc = await addDocumentNonBlocking(collectionRef, {
             ...data,
             createdAt: serverTimestamp(),
         });
+        if(newDoc) {
+            createLog(firestore, auth, {
+                action: 'created',
+                entityType: 'Building',
+                entityId: newDoc.id,
+                description: `Created new building: ${data.buildingName}`,
+            });
+        }
         toast({
           title: 'Success',
           description: 'Building added successfully.',

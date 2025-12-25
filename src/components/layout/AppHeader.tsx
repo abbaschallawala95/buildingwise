@@ -16,6 +16,7 @@ import {
   BookText,
   UserCircle2,
   LogOut,
+  History,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
@@ -48,6 +49,7 @@ const navLinks = [
     { href: "/expenses", label: "Expenses", icon: CreditCard },
     { href: "/dues", label: "Dues", icon: ListX },
     { href: "/reports", label: "Reports", icon: BookText },
+    { href: "/logs", label: "Logs", icon: History },
     { href: "/expense-types", label: "Expense Types", icon: Settings },
     { href: "/due-types", label: "Due Types", icon: Tags },
 ];
@@ -176,5 +178,3 @@ export function AppHeader() {
     </header>
   );
 }
-
-    

@@ -13,11 +13,12 @@ import {
     AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { useFirestore, deleteDocumentNonBlocking } from '@/firebase';
+import { useFirestore, deleteDocumentNonBlocking, useAuth } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import type { Building } from '@/app/(app)/buildings/page';
 import { Trash2 } from 'lucide-react';
+import { createLog } from '@/lib/logger';
 
 
 interface DeleteBuildingDialogProps {
@@ -26,6 +27,7 @@ interface DeleteBuildingDialogProps {
 
 export function DeleteBuildingDialog({ building }: DeleteBuildingDialogProps) {
     const firestore = useFirestore();
+    const auth = useAuth();
     const { toast } = useToast();
     const [isOpen, setIsOpen] = useState(false);
 
@@ -33,6 +35,12 @@ export function DeleteBuildingDialog({ building }: DeleteBuildingDialogProps) {
         if (!firestore) return;
         const docRef = doc(firestore, 'buildings', building.id);
         deleteDocumentNonBlocking(docRef);
+        createLog(firestore, auth, {
+            action: 'deleted',
+            entityType: 'Building',
+            entityId: building.id,
+            description: `Deleted building: ${building.buildingName}`,
+        });
         toast({
             title: 'Success',
             description: 'Building deleted successfully.',

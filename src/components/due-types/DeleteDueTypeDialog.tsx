@@ -13,11 +13,12 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { useFirestore, deleteDocumentNonBlocking } from '@/firebase';
+import { useFirestore, deleteDocumentNonBlocking, useAuth } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import type { DueType } from '@/app/(app)/due-types/page';
 import { Trash2 } from 'lucide-react';
+import { createLog } from '@/lib/logger';
 
 interface DeleteDueTypeDialogProps {
   dueType: DueType;
@@ -25,6 +26,7 @@ interface DeleteDueTypeDialogProps {
 
 export function DeleteDueTypeDialog({ dueType }: DeleteDueTypeDialogProps) {
   const firestore = useFirestore();
+  const auth = useAuth();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -32,6 +34,12 @@ export function DeleteDueTypeDialog({ dueType }: DeleteDueTypeDialogProps) {
     if (!firestore) return;
     const docRef = doc(firestore, 'dueTypes', dueType.id);
     deleteDocumentNonBlocking(docRef);
+    createLog(firestore, auth, {
+        action: 'deleted',
+        entityType: 'Due Type',
+        entityId: dueType.id,
+        description: `Deleted due type: ${dueType.name}`,
+    });
     toast({
       title: 'Success',
       description: 'Due type deleted successfully.',

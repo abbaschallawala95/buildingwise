@@ -5,7 +5,7 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { collection, doc, serverTimestamp } from 'firebase/firestore';
-import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking, useAuth } from '@/firebase';
 
 import {
   Dialog,
@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
 import type { ExpenseType } from '@/app/(app)/expense-types/page';
+import { createLog } from '@/lib/logger';
 
 const expenseTypeSchema = z.object({
   name: z.string().min(3, 'Category name must be at least 3 characters long.'),
@@ -37,6 +38,7 @@ interface ExpenseTypeFormProps {
 
 export function ExpenseTypeForm({ isOpen, setIsOpen, expenseType }: ExpenseTypeFormProps) {
   const firestore = useFirestore();
+  const auth = useAuth();
   const { toast } = useToast();
   const {
     register,
@@ -72,6 +74,12 @@ export function ExpenseTypeForm({ isOpen, setIsOpen, expenseType }: ExpenseTypeF
         // Update existing
         const docRef = doc(firestore, 'expenseTypes', expenseType.id);
         updateDocumentNonBlocking(docRef, data);
+        createLog(firestore, auth, {
+            action: 'updated',
+            entityType: 'Expense Type',
+            entityId: expenseType.id,
+            description: `Updated expense type: ${data.name}`,
+        });
         toast({
           title: 'Success',
           description: 'Expense type updated successfully.',
@@ -79,10 +87,18 @@ export function ExpenseTypeForm({ isOpen, setIsOpen, expenseType }: ExpenseTypeF
       } else {
         // Add new
         const collectionRef = collection(firestore, 'expenseTypes');
-        addDocumentNonBlocking(collectionRef, {
+        const newDoc = await addDocumentNonBlocking(collectionRef, {
           ...data,
           createdAt: serverTimestamp(),
         });
+        if (newDoc) {
+            createLog(firestore, auth, {
+                action: 'created',
+                entityType: 'Expense Type',
+                entityId: newDoc.id,
+                description: `Created new expense type: ${data.name}`,
+            });
+        }
         toast({
           title: 'Success',
           description: 'Expense type added successfully.',

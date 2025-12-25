@@ -10,7 +10,7 @@ import {
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore';
-import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking, useAuth } from '@/firebase';
 
 import {
   Dialog,
@@ -32,6 +32,7 @@ import type { Due } from '@/app/(app)/dues/page';
 import type { Building } from '@/app/(app)/buildings/page';
 import type { Member } from '@/app/(app)/members/page';
 import type { DueType } from '@/app/(app)/due-types/page';
+import { createLog } from '@/lib/logger';
 
 const dueSchema = z.object({
   buildingId: z.string().min(1, 'Please select a building.'),
@@ -66,6 +67,7 @@ interface DueFormProps {
 
 export function DueForm({ isOpen, setIsOpen, due, buildings, members, dueTypes }: DueFormProps) {
   const firestore = useFirestore();
+  const auth = useAuth();
   const { toast } = useToast();
 
   const {
@@ -151,6 +153,12 @@ export function DueForm({ isOpen, setIsOpen, due, buildings, members, dueTypes }
         // Update existing due
         const docRef = doc(firestore, 'buildings', due.buildingId, 'dues', due.id);
         updateDocumentNonBlocking(docRef, dataToSave);
+        createLog(firestore, auth, {
+            action: 'updated',
+            entityType: 'Due',
+            entityId: due.id,
+            description: `Updated due: ${data.title}`,
+        });
         toast({
           title: 'Success',
           description: 'Due updated successfully.',
@@ -158,10 +166,18 @@ export function DueForm({ isOpen, setIsOpen, due, buildings, members, dueTypes }
       } else {
         // Add new due to the subcollection of the selected building
         const collectionRef = collection(firestore, 'buildings', data.buildingId, 'dues');
-        addDocumentNonBlocking(collectionRef, {
+        const newDoc = await addDocumentNonBlocking(collectionRef, {
             ...dataToSave,
             createdAt: serverTimestamp(),
         });
+        if (newDoc) {
+            createLog(firestore, auth, {
+                action: 'created',
+                entityType: 'Due',
+                entityId: newDoc.id,
+                description: `Created new due: ${data.title}`,
+            });
+        }
         toast({
           title: 'Success',
           description: 'Due added successfully.',
