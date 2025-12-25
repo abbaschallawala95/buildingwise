@@ -6,7 +6,7 @@ import OverviewChart from '@/components/dashboard/OverviewChart';
 import RecentActivity from '@/components/dashboard/RecentActivity';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, collectionGroup } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
 import type { Building } from '../buildings/page';
@@ -19,6 +19,7 @@ import type { Due } from '../dues/page';
 export default function DashboardPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
+  const { user } = useUser();
 
   const buildingsCollection = useMemoFirebase(
     () => (firestore ? collection(firestore, 'buildings') : null),
@@ -147,7 +148,11 @@ export default function DashboardPage() {
 
   return (
     <>
-      <PageHeader title="Dashboard">
+      <PageHeader title={
+        <>
+         <span className="text-primary">{user?.displayName || 'User'}</span> - Dashboard
+        </>
+      }>
         <Button onClick={handleDownloadReport} disabled={isLoading}>
           <Download className="mr-2 h-4 w-4" />
           Download Report
