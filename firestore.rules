@@ -43,6 +43,11 @@ service cloud.firestore {
     function isExistingDoc() {
       return resource != null;
     }
+    
+    // Checks if the requesting user is an admin
+    function isAdmin() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
 
     // Combines ownership and existence checks for state-changing operations on existing docs
     function isExistingOwner(userId) {
@@ -53,16 +58,16 @@ service cloud.firestore {
      * @description Controls access to user profile documents.
      * @path /users/{userId}
      * @allow (create) A new user creating their own profile document: `create /users/user_abc` (auth.uid: 'user_abc').
-     * @allow (get) An authenticated user reading their own profile: `get /users/user_abc` (auth.uid: 'user_abc').
-     * @deny (list) Any user, authenticated or not, listing all user profiles: `list /users`.
-     * @deny (update) A user trying to modify another user's profile: `update /users/user_xyz` (auth.uid: 'user_abc').
-     * @principle Restricts access to a user's own data tree.
+     * @allow (get, list) An authenticated user reading their own profile or an admin listing users.
+     * @deny (list) A non-admin user listing all user profiles.
+     * @deny (update) A user trying to modify another user's profile if they are not an admin.
+     * @principle Restricts access to a user's own data tree, but allows admin override.
      */
     match /users/{userId} {
       allow get: if isSignedIn();
-      allow list: if isSignedIn();
+      allow list: if isSignedIn() && isAdmin();
       allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow update: if (isExistingOwner(userId) || isAdmin()) && request.resource.data.id == resource.data.id;
       allow delete: if isExistingOwner(userId);
     }
     
