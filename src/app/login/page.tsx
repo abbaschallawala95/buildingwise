@@ -39,14 +39,16 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 async function createOrVerifyInitialUser(auth: any, firestore: any) {
   const email = 'abbas@example.com';
-  const password = 'abbas123';
+  const password = 'abbas2026';
   const fullName = 'Abbas';
 
   try {
+    // Attempt to create the user. If it fails because the email is in use, the catch block will handle it.
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
-    await updateProfile(user, { displayName: fullName });
     
+    // Set display name and profile in Firestore
+    await updateProfile(user, { displayName: fullName });
     const userProfileRef = doc(firestore, 'users', user.uid);
     setDocumentNonBlocking(userProfileRef, {
       id: user.uid,
@@ -57,15 +59,16 @@ async function createOrVerifyInitialUser(auth: any, firestore: any) {
       createdAt: serverTimestamp(),
     }, { merge: true });
     
-    // Sign out so the user can log in themselves.
+    // Sign out immediately so the user can log in themselves.
     await auth.signOut();
+
   } catch (error: any) {
     if (error.code === 'auth/email-already-in-use') {
-      // User already exists, which is fine. We can ensure their profile is correct.
-      // For simplicity in this bootstrap phase, we'll just log this and assume
-      // the profile will be handled on login or by a separate admin action if needed.
-      console.log('Initial admin user already exists.');
+      // This is expected if the app has run before. We can ignore this error.
+      // The login process will handle ensuring the user is active.
+      console.log('Initial admin user already exists. Proceeding to login.');
     } else {
+      // For any other error, log it.
       console.error("Failed to create or verify initial user:", error);
     }
   }
@@ -90,6 +93,7 @@ export default function LoginPage() {
     if (auth && firestore) {
       createOrVerifyInitialUser(auth, firestore).finally(() => setIsInitializing(false));
     } else if (!auth || !firestore) {
+      // If firebase services are not ready, stop initializing
       setIsInitializing(false);
     }
   }, [auth, firestore]);
@@ -106,11 +110,13 @@ export default function LoginPage() {
       const userDoc = await getDoc(userDocRef);
 
       if (!userDoc.exists()) {
+        // This case is unlikely if the initialization logic works, but as a safeguard:
+        // if user exists in auth but not firestore, create their profile.
         await setDocumentNonBlocking(userDocRef, {
             id: user.uid,
             fullName: user.displayName || 'Abbas',
             email: user.email,
-            role: 'admin',
+            role: 'admin', // Default to admin for the special user
             status: 'active',
             createdAt: serverTimestamp(),
         }, { merge: true });
