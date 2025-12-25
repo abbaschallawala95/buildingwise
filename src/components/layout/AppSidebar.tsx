@@ -14,6 +14,7 @@ import {
   ListX,
   Tags,
   BookText,
+  UserCircle,
 } from 'lucide-react';
 import { collectionGroup } from 'firebase/firestore';
 
@@ -39,6 +40,11 @@ const navLinks = [
   { href: '/expense-types', label: 'Expense Types', icon: Settings },
   { href: '/due-types', label: 'Due Types', icon: Tags },
 ];
+
+const secondaryNavLinks = [
+    { href: '/profile', label: 'Profile', icon: UserCircle },
+    { href: '/settings', label: 'Settings', icon: Settings },
+]
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -68,7 +74,7 @@ export function AppSidebar() {
             <span className="sr-only">Toggle notifications</span>
           </Button>
         </div>
-        <div className="flex-1">
+        <div className="flex-1 overflow-auto py-2">
           <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
@@ -93,7 +99,23 @@ export function AppSidebar() {
             })}
           </nav>
         </div>
+         <div className="mt-auto p-4">
+            <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+                <Link
+                  href="/profile"
+                  className={cn(
+                    'flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary',
+                    pathname === '/profile' ? 'bg-muted text-primary' : 'text-muted-foreground'
+                  )}
+                >
+                  <UserCircle className="h-4 w-4" />
+                  Profile
+                </Link>
+            </nav>
+        </div>
       </div>
     </div>
   );
 }
+
+    
