@@ -56,12 +56,26 @@ export default function AdminPage() {
   );
   const { data: currentUserProfile, isLoading: isLoadingCurrentUser } = useDoc<UserProfile>(currentUserProfileDoc);
 
-  // Authorize
+  const isUserAdmin = currentUserProfile?.role === 'admin';
+
+  // Only fetch users if the current user is an admin
+  const usersCollection = useMemoFirebase(
+    () => (firestore && isUserAdmin ? collection(firestore, 'users') : null),
+    [firestore, isUserAdmin]
+  );
+
+  const {
+    data: users,
+    isLoading: isLoadingUsers,
+    error,
+  } = useCollection<UserProfile>(usersCollection);
+
+
+  // Authorize and redirect if not an admin
   useEffect(() => {
-    // Wait until the profile is loaded
+    // Wait until the profile is loaded before making a decision
     if (!isLoadingCurrentUser) {
-      // If there's no profile or the role is not admin, redirect
-      if (!currentUserProfile || currentUserProfile.role !== 'admin') {
+      if (!isUserAdmin) {
         toast({
           variant: 'destructive',
           title: 'Unauthorized',
@@ -70,18 +84,7 @@ export default function AdminPage() {
         router.push('/dashboard');
       }
     }
-  }, [currentUserProfile, isLoadingCurrentUser, router, toast]);
-
-  const usersCollection = useMemoFirebase(
-    () => (firestore ? collection(firestore, 'users') : null),
-    [firestore]
-  );
-  
-  const {
-    data: users,
-    isLoading: isLoadingUsers,
-    error,
-  } = useCollection<UserProfile>(usersCollection);
+  }, [isUserAdmin, isLoadingCurrentUser, router, toast]);
 
   const isLoading = isLoadingUsers || isLoadingCurrentUser;
 
@@ -129,7 +132,7 @@ export default function AdminPage() {
   }, [users]);
   
   // Wait for authorization check
-  if (isLoadingCurrentUser || !currentUserProfile || currentUserProfile.role !== 'admin') {
+  if (isLoadingCurrentUser || !isUserAdmin) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
