@@ -89,7 +89,7 @@ export default function ReportsPage() {
   
   const allMonths = useMemo(() => {
     const months = new Set<string>();
-    transactions?.forEach(t => months.add(t.month));
+    transactions?.forEach(t => t.month && months.add(t.month));
     expenses?.forEach(e => {
       if (e.expenseDate?.toDate) {
         months.add(new Date(e.expenseDate.toDate()).toLocaleString('default', { month: 'long', year: 'numeric' }));
@@ -201,15 +201,15 @@ export default function ReportsPage() {
                     <div className="grid gap-4 md:grid-cols-3">
                         <Card>
                             <CardHeader><CardTitle>Total Income</CardTitle></CardHeader>
-                            <CardContent><p className="text-2xl font-bold">{isLoading ? <Skeleton className="h-8 w-3/4"/> : formatCurrency(summary.totalIncome)}</p></CardContent>
+                            <CardContent><div className="text-2xl font-bold">{isLoading ? <Skeleton className="h-8 w-3/4"/> : formatCurrency(summary.totalIncome)}</div></CardContent>
                         </Card>
                         <Card>
                             <CardHeader><CardTitle>Total Expenses</CardTitle></CardHeader>
-                            <CardContent><p className="text-2xl font-bold">{isLoading ? <Skeleton className="h-8 w-3/4"/> : formatCurrency(summary.totalExpenses)}</p></CardContent>
+                            <CardContent><div className="text-2xl font-bold">{isLoading ? <Skeleton className="h-8 w-3/4"/> : formatCurrency(summary.totalExpenses)}</div></CardContent>
                         </Card>
                         <Card>
                             <CardHeader><CardTitle>Net Balance</CardTitle></CardHeader>
-                            <CardContent><p className="text-2xl font-bold">{isLoading ? <Skeleton className="h-8 w-3/4"/> : formatCurrency(summary.netBalance)}</p></CardContent>
+                            <CardContent><div className="text-2xl font-bold">{isLoading ? <Skeleton className="h-8 w-3/4"/> : formatCurrency(summary.netBalance)}</div></CardContent>
                         </Card>
                     </div>
                 </TabsContent>
@@ -236,7 +236,7 @@ export default function ReportsPage() {
                                     <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
                                 </TableRow>
                             ))}
-                            {filteredData.transactions.map(t => (
+                            {!isLoading && filteredData.transactions.map(t => (
                                 <TableRow key={t.id}>
                                     <TableCell>{formatDate(t.createdAt)}</TableCell>
                                     <TableCell>{buildingMap.get(t.buildingId)}</TableCell>
@@ -272,7 +272,7 @@ export default function ReportsPage() {
                                     <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
                                 </TableRow>
                             ))}
-                            {filteredData.dues.map(d => (
+                            {!isLoading && filteredData.dues.map(d => (
                                 <TableRow key={d.id}>
                                     <TableCell>{formatDate(d.dueDate)}</TableCell>
                                     <TableCell>{memberMap.get(d.memberId)?.fullName}</TableCell>
