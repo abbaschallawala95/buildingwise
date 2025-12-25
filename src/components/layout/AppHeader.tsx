@@ -54,8 +54,10 @@ const navLinks = [
     { href: "/reports", label: "Reports", icon: BookText },
     { href: "/logs", label: "Logs", icon: History },
     { href: "/admin", label: "Admin", icon: ShieldCheck, adminOnly: true },
-    { href: "/expense-types", label: "Expense Types", icon: Settings },
-    { href: "/due-types", label: "Due Types", icon: Tags },
+    { href: "/settings", label: "Settings" , icon: Settings, subMenu: [
+      { href: "/expense-types", label: "Expense Types", icon: Settings },
+      { href: "/due-types", label: "Due Types", icon: Tags },
+    ]},
 ];
 
 function HeaderContent() {
@@ -72,7 +74,9 @@ function HeaderContent() {
     const { data: userProfile } = useDoc<UserProfile>(userProfileDoc);
 
     const handleSignOut = async () => {
-      await signOut(auth);
+      if (auth) {
+        await signOut(auth);
+      }
       router.push('/login');
     };
     
@@ -105,6 +109,9 @@ function HeaderContent() {
                 if (link.adminOnly && userProfile?.role !== 'admin') {
                     return null;
                 }
+                 if (link.subMenu) {
+                  return null; // Don't render top-level settings in mobile nav
+                }
                 const isActive = pathname === link.href;
                 return (
                     <Link
@@ -120,6 +127,27 @@ function HeaderContent() {
                     </Link>
                 )
             })}
+             {/* Manually add settings sub-menu for mobile */}
+            <Link
+                href="/expense-types"
+                className={cn(
+                    "mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2",
+                    pathname === '/expense-types' ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+            >
+                <Settings className="h-5 w-5" />
+                Expense Types
+            </Link>
+            <Link
+                href="/due-types"
+                className={cn(
+                    "mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2",
+                    pathname === '/due-types' ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+            >
+                <Tags className="h-5 w-5" />
+                Due Types
+            </Link>
           </nav>
         </SheetContent>
       </Sheet>

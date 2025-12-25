@@ -17,6 +17,7 @@ import {
   UserCircle,
   History,
   ShieldCheck,
+  ChevronDown,
 } from 'lucide-react';
 import { collection, collectionGroup, doc } from 'firebase/firestore';
 
@@ -28,6 +29,8 @@ import { cn } from '@/lib/utils';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { Member } from '@/app/(app)/members/page';
 import type { UserProfile } from '@/app/(app)/profile/page';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useState } from 'react';
 
 
 const navLinks = [
@@ -42,19 +45,17 @@ const navLinks = [
   { href: '/reports', label: 'Reports', icon: BookText },
   { href: '/logs', label: 'Logs', icon: History },
   { href: '/admin', label: 'Admin', icon: ShieldCheck, adminOnly: true },
-  { href: '/expense-types', label: 'Expense Types', icon: Settings },
-  { href: '/due-types', label: 'Due Types', icon: Tags },
+  { href: "/settings", label: "Settings" , icon: Settings, subMenu: [
+      { href: "/expense-types", label: "Expense Types", icon: Settings },
+      { href: "/due-types", label: "Due Types", icon: Tags },
+  ]},
 ];
-
-const secondaryNavLinks = [
-    { href: '/profile', label: 'Profile', icon: UserCircle },
-    { href: '/settings', label: 'Settings', icon: Settings },
-]
 
 export function AppSidebar() {
   const pathname = usePathname();
   const firestore = useFirestore();
   const { user } = useUser();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(pathname.startsWith('/expense-types') || pathname.startsWith('/due-types'));
 
   const membersCollectionGroup = useMemoFirebase(
     () => (firestore ? collectionGroup(firestore, 'members') : null),
@@ -92,6 +93,41 @@ export function AppSidebar() {
               if (link.adminOnly && userProfile?.role !== 'admin') {
                 return null;
               }
+
+              if (link.subMenu) {
+                return (
+                    <Collapsible key={link.href} open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+                        <CollapsibleTrigger asChild>
+                            <div className={cn(
+                                'flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary text-muted-foreground cursor-pointer',
+                                isSettingsOpen && 'text-primary'
+                            )}>
+                                <link.icon className="h-4 w-4" />
+                                {link.label}
+                                <ChevronDown className={cn("ml-auto h-4 w-4 transition-transform", isSettingsOpen && "rotate-180")}/>
+                            </div>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="pl-7 pt-2 space-y-1">
+                            {link.subMenu.map(subLink => {
+                                const isActive = pathname === subLink.href;
+                                return (
+                                <Link
+                                    key={subLink.href}
+                                    href={subLink.href}
+                                    className={cn(
+                                        'flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary',
+                                        isActive ? 'bg-muted text-primary' : 'text-muted-foreground'
+                                    )}
+                                >
+                                    {subLink.label}
+                                </Link>
+                                )
+                            })}
+                        </CollapsibleContent>
+                    </Collapsible>
+                )
+              }
+
               const isActive = pathname === link.href;
               return (
                 <Link

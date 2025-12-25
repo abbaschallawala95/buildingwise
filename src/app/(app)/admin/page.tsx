@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { collection, doc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser, updateDocumentNonBlocking } from '@/firebase';
 import { useRouter } from 'next/navigation';
+import { useDoc } from '@/firebase/firestore/use-doc';
 
 import {
   Card,
@@ -27,7 +28,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import type { UserProfile } from '../profile/page';
-import { useDoc } from '@/firebase/firestore/use-doc';
 
 export default function AdminPage() {
   const firestore = useFirestore();
@@ -70,7 +70,6 @@ export default function AdminPage() {
   const handleStatusChange = (user: UserProfile, newStatus: boolean) => {
     if (!firestore || !currentUserProfile) return;
 
-    // Super admin cannot be deactivated
     if (user.email === 'abbas@example.com') {
       toast({
         variant: 'destructive',
@@ -103,8 +102,11 @@ export default function AdminPage() {
   
   if (!isAuthorized) {
     return (
-        <div className="flex justify-center items-center h-full">
-            <p>Verifying authorization...</p>
+        <div className="flex h-full min-h-[50vh] flex-col items-center justify-center gap-4">
+            <div className="text-center">
+                <h2 className="text-xl font-semibold">Verifying Authorization...</h2>
+                <p className="text-muted-foreground">Please wait while we check your permissions.</p>
+            </div>
         </div>
     );
   }
@@ -134,7 +136,7 @@ export default function AdminPage() {
               {isLoading &&
                 Array.from({ length: 3 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell><Skeleton className="h-10 w-10 rounded-full" /></TableCell>
+                    <TableCell><div className="flex items-center gap-3"><Skeleton className="h-10 w-10 rounded-full" /><Skeleton className="h-4 w-[150px]" /></div></TableCell>
                     <TableCell><Skeleton className="h-4 w-[200px]" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-[80px]" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-[80px]" /></TableCell>
