@@ -7,9 +7,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
   createUserWithEmailAndPassword,
+  fetchSignInMethodsForEmail,
   updateProfile,
 } from 'firebase/auth';
 import { doc, serverTimestamp } from 'firebase/firestore';
+import React, { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -40,11 +42,52 @@ const registerSchema = z
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
+async function createInitialUser(auth: any, firestore: any) {
+  const email = 'abbas@example.com';
+  const password = 'abbas123';
+  const fullName = 'Abbas';
+
+  try {
+    // Check if the user already exists
+    const signInMethods = await fetchSignInMethodsForEmail(auth, email);
+    if (signInMethods.length > 0) {
+      // User already exists, no need to create
+      return;
+    }
+
+    // User does not exist, create them
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+    await updateProfile(user, { displayName: fullName });
+
+    const userProfileRef = doc(firestore, 'users', user.uid);
+    setDocumentNonBlocking(userProfileRef, {
+      id: user.uid,
+      fullName: fullName,
+      email: email,
+      createdAt: serverTimestamp(),
+    }, { merge: true });
+    
+  } catch (error: any) {
+    // We can ignore email-already-in-use errors during this initial setup
+    if (error.code !== 'auth/email-already-in-use') {
+      console.error("Failed to create initial user:", error);
+    }
+  }
+}
+
 export default function RegisterPage() {
   const auth = useAuth();
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+  const [isInitializing, setIsInitializing] = useState(true);
+
+  useEffect(() => {
+    if (auth && firestore) {
+      createInitialUser(auth, firestore).finally(() => setIsInitializing(false));
+    }
+  }, [auth, firestore]);
 
   const {
     register,
@@ -98,6 +141,14 @@ export default function RegisterPage() {
       });
     }
   };
+
+  if (isInitializing) {
+    return (
+       <div className="flex items-center justify-center min-h-screen bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    )
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-4">
