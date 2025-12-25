@@ -38,15 +38,12 @@ import type { UserProfile } from '../profile/page';
 import { Loader2, MoreHorizontal, PlusCircle } from 'lucide-react';
 import { UserForm } from '@/components/admin/UserForm';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { usePathname, useRouter } from 'next/navigation';
 import { DeleteUserDialog } from '@/components/admin/DeleteUserDialog';
 
 export default function AdminPage() {
   const firestore = useFirestore();
   const { user: currentUser } = useUser();
   const { toast } = useToast();
-  const router = useRouter();
-  const pathname = usePathname();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | undefined>(undefined);
@@ -58,22 +55,6 @@ export default function AdminPage() {
   const { data: currentUserProfile, isLoading: isLoadingCurrentUser } = useDoc<UserProfile>(currentUserProfileDoc);
 
   const isUserAdmin = currentUserProfile?.role === 'admin';
-  
-  // This effect handles authorization
-  React.useEffect(() => {
-    // Wait until the profile is loaded
-    if (!isLoadingCurrentUser && pathname === '/admin') {
-      // If profile exists and user is not an admin, or profile doesn't exist, redirect.
-      if (!currentUserProfile || currentUserProfile.role !== 'admin') {
-        toast({
-          variant: 'destructive',
-          title: 'Unauthorized',
-          description: 'You do not have permission to access the admin page.',
-        });
-        router.push('/dashboard');
-      }
-    }
-  }, [currentUserProfile, isLoadingCurrentUser, pathname, router, toast]);
 
   // Only fetch users if the current user is an admin
   const usersCollection = useMemoFirebase(
@@ -133,7 +114,6 @@ export default function AdminPage() {
     return [...users].sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
   }, [users]);
   
-  // Wait for authorization check
   if (isLoadingCurrentUser || !isUserAdmin) {
     return (
       <div className="flex h-full w-full items-center justify-center">

@@ -26,10 +26,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     // 1. Handle user authentication loading and unauthenticated state
     if (!isUserLoading && !user) {
       router.push('/login');
-      return;
+      return; // Stop further checks if user is not logged in
     }
 
-    // 2. Handle admin page authorization
+    // 2. Handle admin page authorization after profile is loaded
     if (pathname === '/admin' && !isLoadingCurrentUser && currentUserProfile) {
       if (currentUserProfile.role !== 'admin') {
         toast({
@@ -43,10 +43,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [user, isUserLoading, router, pathname, currentUserProfile, isLoadingCurrentUser, toast]);
 
 
+  // Show loading spinner while auth is resolving or if navigating to admin and profile is loading
   if (isUserLoading || !user || (pathname === '/admin' && isLoadingCurrentUser)) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Final check: If trying to access admin but profile hasn't loaded or user is not admin, show loading/auth screen.
+  // This prevents the admin page from rendering with incorrect permissions.
+  if (pathname === '/admin' && (!currentUserProfile || currentUserProfile.role !== 'admin')) {
+     return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="ml-2">Verifying authorization...</p>
       </div>
     );
   }
