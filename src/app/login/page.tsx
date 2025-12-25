@@ -33,43 +33,59 @@ const loginSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
   password: z
     .string()
-    .min(6, { message: 'Password must be at least 6 characters long.' }),
+    .min(1, { message: 'Password is required.' }),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-async function createInitialUser(auth: any, firestore: any) {
+async function createOrVerifyInitialUser(auth: any, firestore: any) {
   const email = 'abbas@example.com';
   const password = 'abbas123';
   const fullName = 'Abbas';
 
   try {
-    // Check if the user already exists
     const signInMethods = await fetchSignInMethodsForEmail(auth, email);
-    if (signInMethods.length > 0) {
-      // User already exists, no need to create
-      return;
-    }
-
-    // User does not exist, create them
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-    await updateProfile(user, { displayName: fullName });
-
-    const userProfileRef = doc(firestore, 'users', user.uid);
-    setDocumentNonBlocking(userProfileRef, {
-      id: user.uid,
-      fullName: fullName,
-      email: email,
-      role: 'admin',
-      status: 'active',
-      createdAt: serverTimestamp(),
-    }, { merge: true });
     
+    if (signInMethods.length > 0) {
+      // User exists, ensure their profile is correct
+      // This is a simplified way to get the UID for an existing email.
+      // In a real-world scenario, you might need a more robust method if the user isn't logged in.
+      // For this initial setup, we assume we can sign in to get the UID, or we have it from a previous creation step.
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        const userProfileRef = doc(firestore, 'users', user.uid);
+        // Ensure role and status are correctly set for the admin
+        setDocumentNonBlocking(userProfileRef, {
+          role: 'admin',
+          status: 'active',
+        }, { merge: true });
+        await auth.signOut(); // Sign out immediately after verification
+      } catch (e) {
+         // If sign-in fails, it might be due to wrong password, but we proceed.
+         // The main purpose is to ensure the user document is correct if they exist.
+         // We can find the user by email in a more complex app, but this will suffice for setup.
+      }
+    } else {
+      // User does not exist, create them
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      await updateProfile(user, { displayName: fullName });
+
+      const userProfileRef = doc(firestore, 'users', user.uid);
+      setDocumentNonBlocking(userProfileRef, {
+        id: user.uid,
+        fullName: fullName,
+        email: email,
+        role: 'admin', // Super admin
+        status: 'active', // Must be active
+        createdAt: serverTimestamp(),
+      }, { merge: true });
+       await auth.signOut(); // Sign out immediately after creation
+    }
   } catch (error: any) {
-    // We can ignore email-already-in-use errors during this initial setup
     if (error.code !== 'auth/email-already-in-use') {
-      console.error("Failed to create initial user:", error);
+      console.error("Failed to create or verify initial user:", error);
     }
   }
 }
@@ -85,18 +101,18 @@ export default function LoginPage() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-    setValue,
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
   });
 
   useEffect(() => {
     if (auth && firestore) {
-      createInitialUser(auth, firestore).finally(() => setIsInitializing(false));
-    } else {
-        setIsInitializing(false);
+      createOrVerifyInitialUser(auth, firestore).finally(() => setIsInitializing(false));
+    } else if (!auth || !firestore) {
+      // If firebase services aren't ready, don't just hang.
+      setIsInitializing(false);
     }
-  }, [auth, firestore, setValue]);
+  }, [auth, firestore]);
 
 
   const onSubmit: SubmitHandler<LoginFormValues> = async (data) => {
