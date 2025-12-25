@@ -14,6 +14,7 @@ import type { Member } from '../members/page';
 import type { Expense } from '../expenses/page';
 import type { Transaction } from '../transactions/page';
 import { useToast } from '@/hooks/use-toast';
+import type { Due } from '../dues/page';
 
 export default function DashboardPage() {
   const firestore = useFirestore();
@@ -28,20 +29,28 @@ export default function DashboardPage() {
     () => (firestore ? collectionGroup(firestore, 'members') : null),
     [firestore]
   );
-  const transactionsCollectionGroup = null;
-  const expensesCollectionGroup = null;
+  const transactionsCollectionGroup = useMemoFirebase(
+    () => (firestore ? collectionGroup(firestore, 'transactions') : null),
+    [firestore]
+  );
+  const expensesCollectionGroup = useMemoFirebase(
+    () => (firestore ? collectionGroup(firestore, 'expenses') : null),
+    [firestore]
+  );
+  const duesCollectionGroup = useMemoFirebase(
+    () => (firestore ? collectionGroup(firestore, 'dues') : null),
+    [firestore]
+  );
 
 
   const { data: buildings, isLoading: loadingBuildings } = useCollection<Building>(buildingsCollection);
   const { data: members, isLoading: loadingMembers } = useCollection<Member>(membersCollectionGroup);
-  // Temporarily use empty arrays for disabled queries
-  const transactions: Transaction[] | null = [];
-  const expenses: Expense[] | null = [];
-  const loadingTransactions = false;
-  const loadingExpenses = false;
+  const { data: transactions, isLoading: loadingTransactions } = useCollection<Transaction>(transactionsCollectionGroup);
+  const { data: expenses, isLoading: loadingExpenses } = useCollection<Expense>(expensesCollectionGroup);
+  const { data: dues, isLoading: loadingDues } = useCollection<Due>(duesCollectionGroup);
 
 
-  const isLoading = loadingBuildings || loadingMembers || loadingTransactions || loadingExpenses;
+  const isLoading = loadingBuildings || loadingMembers || loadingTransactions || loadingExpenses || loadingDues;
 
   const handleDownloadReport = () => {
     if (isLoading || !buildings) {
@@ -150,6 +159,7 @@ export default function DashboardPage() {
           members={members || []}
           transactions={transactions || []}
           expenses={expenses || []}
+          dues={dues || []}
           isLoading={isLoading}
         />
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">

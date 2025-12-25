@@ -29,6 +29,7 @@ import { MemberForm } from '@/components/members/MemberForm';
 import { DeleteMember } from '@/components/members/DeleteMember';
 import { EditMember } from '@/components/members/EditMember';
 import type { Transaction } from '../transactions/page';
+import type { Due } from '../dues/page';
 
 export type Member = {
   id: string;
@@ -64,6 +65,11 @@ export default function MembersPage() {
     () => (firestore ? collectionGroup(firestore, 'transactions') : null),
     [firestore]
   );
+  
+  const duesCollectionGroup = useMemoFirebase(
+    () => (firestore ? collectionGroup(firestore, 'dues') : null),
+    [firestore]
+  );
 
   const {
     data: buildings,
@@ -80,8 +86,13 @@ export default function MembersPage() {
     data: transactions,
     isLoading: isLoadingTransactions,
   } = useCollection<Transaction>(transactionsCollectionGroup);
+  
+  const {
+    data: dues,
+    isLoading: isLoadingDues,
+  } = useCollection<Due>(duesCollectionGroup);
 
-  const isLoading = isLoadingBuildings || isLoadingMembers || isLoadingTransactions;
+  const isLoading = isLoadingBuildings || isLoadingMembers || isLoadingTransactions || isLoadingDues;
 
   const handleAdd = () => {
     setIsAddFormOpen(true);
@@ -98,46 +109,47 @@ export default function MembersPage() {
     return buildings?.find(b => b.id === buildingId)?.buildingName || '...';
   }
 
-  const calculateTotalDues = (member: Member) => {
-    if (!member.maintenanceStartDate?.toDate) {
-      return member.previousDues || 0;
-    }
-  
-    const memberTransactions = transactions?.filter(t => t.memberId === member.id && t.type === 'maintenance') || [];
-    let totalDues = member.previousDues || 0;
-  
-    const startDate = member.maintenanceStartDate.toDate();
-    const today = new Date();
-    // Use midnight of today for consistent date comparisons
-    const todayAtMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  
-    const endDate = member.maintenanceEndDate?.toDate ? member.maintenanceEndDate.toDate() : todayAtMidnight;
-  
-    // Start iterating from the first day of the start month
-    let iteratorDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
-  
-    while (iteratorDate <= endDate) {
-      // Create the due date for the current month in the loop
-      const currentMonthDueDate = new Date(iteratorDate.getFullYear(), iteratorDate.getMonth(), member.monthlyDueDate);
-  
-      // Only consider dues for months that have already started and where the due date has passed
-      if (iteratorDate <= todayAtMidnight && currentMonthDueDate < todayAtMidnight) {
-        const monthYearString = iteratorDate.toLocaleString('default', { month: 'long', year: 'numeric' });
-  
-        // Check if a payment was made for this specific month
-        const paidForMonth = memberTransactions.some(t => t.month && t.month.toLowerCase() === monthYearString.toLowerCase());
-  
-        if (!paidForMonth) {
-          totalDues += member.monthlyMaintenance;
+  const memberDuesMap = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!members || !transactions || !dues) return map;
+
+    members.forEach(member => {
+      let totalDues = member.previousDues || 0;
+
+      // 1. Calculate monthly maintenance dues
+      if (member.maintenanceStartDate?.toDate) {
+        const memberTransactions = transactions.filter(t => t.memberId === member.id && t.type === 'maintenance');
+        const startDate = member.maintenanceStartDate.toDate();
+        const today = new Date();
+        const todayAtMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const endDate = member.maintenanceEndDate?.toDate ? member.maintenanceEndDate.toDate() : todayAtMidnight;
+        let iteratorDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+
+        while (iteratorDate <= endDate) {
+          const currentMonthDueDate = new Date(iteratorDate.getFullYear(), iteratorDate.getMonth(), member.monthlyDueDate);
+          if (iteratorDate <= todayAtMidnight && currentMonthDueDate < todayAtMidnight) {
+            const monthYearString = iteratorDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+            const paidForMonth = memberTransactions.some(t => t.month && t.month.toLowerCase() === monthYearString.toLowerCase());
+            if (!paidForMonth) {
+              totalDues += member.monthlyMaintenance;
+            }
+          }
+          iteratorDate.setMonth(iteratorDate.getMonth() + 1);
         }
       }
-  
-      // Move to the next month
-      iteratorDate.setMonth(iteratorDate.getMonth() + 1);
-    }
-  
-    return totalDues;
-  };
+
+      // 2. Add other unpaid dues
+      const otherUnpaidDues = dues
+        .filter(d => d.memberId === member.id && d.status === 'unpaid')
+        .reduce((sum, d) => sum + d.amount, 0);
+
+      totalDues += otherUnpaidDues;
+      
+      map.set(member.id, totalDues);
+    });
+
+    return map;
+  }, [members, transactions, dues]);
 
 
   const sortedMembers = useMemo(() => {
@@ -205,7 +217,7 @@ export default function MembersPage() {
               {!isLoading &&
                 !error &&
                 sortedMembers.map((member) => {
-                  const totalDues = calculateTotalDues(member);
+                  const totalDues = memberDuesMap.get(member.id) || 0;
                   return (
                     <TableRow key={member.id}>
                       <TableCell className="font-medium">{member.fullName}</TableCell>
