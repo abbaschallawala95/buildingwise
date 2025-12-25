@@ -68,7 +68,7 @@ service cloud.firestore {
       allow list: if isSignedIn() && isAdmin();
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if (isExistingOwner(userId) || isAdmin()) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId) || isAdmin();
     }
     
     /**
