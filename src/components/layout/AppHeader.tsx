@@ -14,6 +14,7 @@ import {
   ListX,
   Tags,
   BookText,
+  LogOut,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 
@@ -21,8 +22,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
 import { Logo } from '../icons';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/firebase';
+import { signOut } from 'firebase/auth';
 
 const navLinks = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -40,6 +43,14 @@ const navLinks = [
 
 function HeaderContent() {
     const pathname = usePathname();
+    const auth = useAuth();
+    const router = useRouter();
+
+    const handleSignOut = async () => {
+      await signOut(auth);
+      router.push('/login');
+    };
+
   return (
     <>
       <Sheet>
@@ -92,6 +103,9 @@ function HeaderContent() {
           </div>
         </form>
       </div>
+      <Button variant="ghost" size="icon" onClick={handleSignOut} aria-label="Sign out">
+        <LogOut className="h-5 w-5" />
+      </Button>
     </>
   );
 }

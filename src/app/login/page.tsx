@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import {
+  signInWithEmailAndPassword,
+} from 'firebase/auth';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -19,6 +22,8 @@ import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/icons';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/firebase';
+import { useEffect } from 'react';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -30,34 +35,46 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
+  const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
   const {
     register,
     handleSubmit,
-    trigger,
-    getValues,
     formState: { errors, isSubmitting },
+    setValue,
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
   });
 
-  const onSubmit: SubmitHandler<LoginFormValues> = (data) => {
-    // Mock login
-    console.log('Login attempt with:', data);
-    toast({
-      title: 'Login Disabled',
-      description: 'Authentication is temporarily disabled.',
-    });
-    router.push('/dashboard');
-  };
-  
-  const handleSignUp = async () => {
-    toast({
-      title: 'Sign Up Disabled',
-      description: 'Authentication is temporarily disabled.',
-    });
+  useEffect(() => {
+    // Pre-fill the form for the initial user
+    setValue('email', 'abbas@example.com');
+    setValue('password', 'abbas123');
+  }, [setValue]);
+
+
+  const onSubmit: SubmitHandler<LoginFormValues> = async (data) => {
+    try {
+      await signInWithEmailAndPassword(auth, data.email, data.password);
+      toast({
+        title: 'Login Successful',
+        description: "Welcome back!",
+      });
+      router.push('/dashboard');
+    } catch (error: any) {
+      console.error('Login Error:', error);
+      let description = 'An unexpected error occurred. Please try again.';
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        description = 'Invalid email or password. Please check your credentials.';
+      }
+      toast({
+        variant: 'destructive',
+        title: 'Login Failed',
+        description,
+      });
+    }
   };
 
   return (
@@ -69,7 +86,7 @@ export default function LoginPage() {
           </div>
           <CardTitle className="text-2xl">Login</CardTitle>
           <CardDescription>
-            Authentication is temporarily disabled.
+            Enter your credentials to access your account.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -81,7 +98,6 @@ export default function LoginPage() {
                 type="email"
                 placeholder="m@example.com"
                 {...register('email')}
-                disabled
               />
               {errors.email && (
                 <p className="text-sm text-destructive">
@@ -92,18 +108,11 @@ export default function LoginPage() {
             <div className="grid gap-2">
               <div className="flex items-center">
                 <Label htmlFor="password">Password</Label>
-                <Link
-                  href="#"
-                  className="ml-auto inline-block text-sm underline"
-                >
-                  Forgot your password?
-                </Link>
               </div>
               <Input
                 id="password"
                 type="password"
                 {...register('password')}
-                disabled
               />
               {errors.password && (
                 <p className="text-sm text-destructive">
@@ -113,17 +122,14 @@ export default function LoginPage() {
             </div>
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Continue to App
-            </Button>
-            <Button variant="outline" className="w-full" type="button" disabled>
-              Login with Google
+              Login
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">
             Don&apos;t have an account?{' '}
-            <Button variant="link" className="p-0 h-auto" onClick={handleSignUp} disabled>
+            <Link href="/register" className="underline">
               Sign up
-            </Button>
+            </Link>
           </div>
         </CardContent>
       </Card>
