@@ -9,7 +9,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   fetchSignInMethodsForEmail,
-  updateProfile
+  updateProfile,
 } from 'firebase/auth';
 import { doc, serverTimestamp, getDoc } from 'firebase/firestore';
 
@@ -45,29 +45,9 @@ async function createOrVerifyInitialUser(auth: any, firestore: any) {
 
   try {
     const signInMethods = await fetchSignInMethodsForEmail(auth, email);
-    
-    if (signInMethods.length > 0) {
-      // User exists, ensure their profile is correct
-      // This is a simplified way to get the UID for an existing email.
-      // In a real-world scenario, you might need a more robust method if the user isn't logged in.
-      // For this initial setup, we assume we can sign in to get the UID, or we have it from a previous creation step.
-      try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-        const userProfileRef = doc(firestore, 'users', user.uid);
-        // Ensure role and status are correctly set for the admin
-        setDocumentNonBlocking(userProfileRef, {
-          role: 'admin',
-          status: 'active',
-        }, { merge: true });
-        await auth.signOut(); // Sign out immediately after verification
-      } catch (e) {
-         // If sign-in fails, it might be due to wrong password, but we proceed.
-         // The main purpose is to ensure the user document is correct if they exist.
-         // We can find the user by email in a more complex app, but this will suffice for setup.
-      }
-    } else {
-      // User does not exist, create them
+
+    // If the user does not exist, create them as an admin.
+    if (signInMethods.length === 0) {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       await updateProfile(user, { displayName: fullName });
@@ -77,16 +57,43 @@ async function createOrVerifyInitialUser(auth: any, firestore: any) {
         id: user.uid,
         fullName: fullName,
         email: email,
-        role: 'admin', // Super admin
-        status: 'active', // Must be active
+        role: 'admin',
+        status: 'active',
         createdAt: serverTimestamp(),
       }, { merge: true });
-       await auth.signOut(); // Sign out immediately after creation
+      
+      // Sign out so the user can log in themselves.
+      await auth.signOut();
+    } else {
+        // If the user *does* exist, we need to ensure their profile is correct.
+        // The most reliable way to do this without knowing their current password
+        // is to sign in and check, but if that fails (e.g. password was changed),
+        // we can't update the profile. For this specific bootstrapping purpose,
+        // we will simply ensure the profile is correct by attempting a login,
+        // and if it fails, we log it but don't block the UI. The login attempt by the
+        // actual user will be the source of truth.
+        try {
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+            const userDocRef = doc(firestore, 'users', user.uid);
+            const userDoc = await getDoc(userDocRef);
+            
+            if (!userDoc.exists() || userDoc.data()?.role !== 'admin' || userDoc.data()?.status !== 'active') {
+                await setDocumentNonBlocking(userDocRef, {
+                    role: 'admin',
+                    status: 'active'
+                }, { merge: true });
+            }
+            await auth.signOut();
+        } catch (error) {
+            // This error is expected if the password was changed from the default.
+            // We can ignore it during this initial setup phase.
+            console.log("Initial admin user check failed, likely because password was changed. This is okay.");
+        }
     }
   } catch (error: any) {
-    if (error.code !== 'auth/email-already-in-use') {
-      console.error("Failed to create or verify initial user:", error);
-    }
+    // Avoid throwing errors during initialization, log them instead.
+    console.error("Failed to create or verify initial user:", error);
   }
 }
 
