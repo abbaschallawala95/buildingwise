@@ -75,11 +75,13 @@ export default function ReportsPage() {
     let currentTransactions = transactions || [];
     let currentExpenses = expenses || [];
     let currentDues = dues || [];
+    let currentBuildings = buildings || [];
 
     if (buildingFilter !== 'all') {
       currentTransactions = currentTransactions.filter(t => t.buildingId === buildingFilter);
       currentExpenses = currentExpenses.filter(e => e.buildingId === buildingFilter);
       currentDues = currentDues.filter(d => d.buildingId === buildingFilter);
+      currentBuildings = currentBuildings.filter(b => b.id === buildingFilter);
     }
 
     if (monthFilter !== 'all') {
@@ -95,8 +97,9 @@ export default function ReportsPage() {
       transactions: currentTransactions,
       expenses: currentExpenses,
       dues: currentDues, // Dues are filtered by building but not month for accuracy
+      buildings: currentBuildings,
     };
-  }, [transactions, expenses, dues, buildingFilter, monthFilter]);
+  }, [transactions, expenses, dues, buildings, buildingFilter, monthFilter]);
 
   
   const combinedLedger = useMemo((): CombinedLedgerItem[] => {
@@ -105,7 +108,7 @@ export default function ReportsPage() {
         date: t.paymentDate || t.createdAt,
         buildingId: t.buildingId,
         memberId: t.memberId,
-        category: t.type.replace('_', ' '),
+        category: t.type === 'maintenance' ? 'Maintenance' : 'Extra Collection',
         details: t.title,
         amount: t.amount,
         type: 'income',
@@ -129,7 +132,15 @@ export default function ReportsPage() {
   const summary = useMemo(() => {
     const totalIncome = filteredData.transactions.reduce((acc, t) => acc + t.amount, 0);
     const totalExpenses = filteredData.expenses.reduce((acc, e) => acc + e.amount, 0);
-    const netBalance = totalIncome - totalExpenses;
+    
+    let netBalance = totalIncome - totalExpenses;
+    
+    // Only add opening balance if viewing the overall report
+    if (monthFilter === 'all') {
+        const totalOpeningBalance = filteredData.buildings.reduce((acc, b) => acc + (b.openingBalance || 0), 0);
+        netBalance += totalOpeningBalance;
+    }
+
     return { totalIncome, totalExpenses, netBalance };
   }, [filteredData]);
   
@@ -276,8 +287,8 @@ export default function ReportsPage() {
                                     <TableCell><Badge variant={item.type === 'income' ? 'secondary' : 'destructive'} className="capitalize">{item.category}</Badge></TableCell>
                                     <TableCell>{item.details}</TableCell>
                                     <TableCell>{item.memberId ? memberMap.get(item.memberId)?.fullName : 'N/A'}</TableCell>
-                                    <TableCell className={`text-right font-medium ${item.type === 'expense' ? 'text-destructive' : ''}`}>
-                                        {item.type === 'expense' ? '-' : ''}{formatCurrency(item.amount)}
+                                    <TableCell className={`text-right font-medium ${item.type === 'expense' ? 'text-destructive' : 'text-green-600'}`}>
+                                        {item.type === 'expense' ? '-' : '+'}{formatCurrency(item.amount)}
                                     </TableCell>
                                 </TableRow>
                             ))}
