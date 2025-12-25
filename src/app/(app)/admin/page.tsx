@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { collection, doc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser, updateDocumentNonBlocking } from '@/firebase';
 import { useRouter } from 'next/navigation';
@@ -34,6 +34,7 @@ export default function AdminPage() {
   const { user: currentUser } = useUser();
   const { toast } = useToast();
   const router = useRouter();
+  const [isAuthorized, setIsAuthorized] = useState(false);
 
   const usersCollection = useMemoFirebase(
     () => (firestore ? collection(firestore, 'users') : null),
@@ -53,15 +54,16 @@ export default function AdminPage() {
 
   const { data: currentUserProfile, isLoading: isLoadingCurrentUser } = useDoc<UserProfile>(currentUserProfileDoc);
   
-  // Redirect if the current user is not an admin
-  if (!isLoadingCurrentUser && currentUserProfile?.role !== 'admin') {
-      router.replace('/dashboard');
-      return (
-        <div className="flex justify-center items-center h-full">
-            <p>You are not authorized to view this page.</p>
-        </div>
-      );
-  }
+  useEffect(() => {
+    if (!isLoadingCurrentUser) {
+      if (currentUserProfile?.role !== 'admin') {
+        router.replace('/dashboard');
+      } else {
+        setIsAuthorized(true);
+      }
+    }
+  }, [isLoadingCurrentUser, currentUserProfile, router]);
+
 
   const isLoading = isLoadingUsers || isLoadingCurrentUser;
 
@@ -99,6 +101,14 @@ export default function AdminPage() {
     return [...users].sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
   }, [users]);
   
+  if (!isAuthorized) {
+    return (
+        <div className="flex justify-center items-center h-full">
+            <p>Verifying authorization...</p>
+        </div>
+    );
+  }
+
   return (
     <>
       <PageHeader title="Admin Panel" />
