@@ -18,10 +18,6 @@
           "type": "string",
           "description": "Address of the building."
         },
-        "openingBalance": {
-          "type": "number",
-          "description": "The initial or opening balance for the building."
-        },
         "createdAt": {
           "type": "string",
           "description": "Timestamp indicating when the building was created.",
@@ -67,29 +63,15 @@
         },
         "monthlyMaintenance": {
           "type": "number",
-          "description": "The monthly maintenance amount for the member."
+          "description": "Monthly maintenance amount for the member."
         },
         "previousDues": {
           "type": "number",
-          "description": "Any previous outstanding dues of the member."
-        },
-        "maintenanceStartDate": {
-          "type": "string",
-          "description": "The date when maintenance charges start for the member.",
-          "format": "date-time"
-        },
-        "maintenanceEndDate": {
-          "type": "string",
-          "description": "The date when maintenance charges end for the member.",
-          "format": "date-time"
-        },
-        "monthlyDueDate": {
-          "type": "number",
-          "description": "The day of the month when the maintenance payment is due."
+          "description": "Previous dues of the member."
         },
         "createdAt": {
           "type": "string",
-          "description": "Timestamp indicating when the member was added.",
+          "description": "Timestamp indicating when the member was created.",
           "format": "date-time"
         }
       },
@@ -98,12 +80,9 @@
         "buildingId",
         "fullName",
         "flatNumber",
-        "floor",
         "contactNumber",
         "monthlyMaintenance",
         "previousDues",
-        "maintenanceStartDate",
-        "monthlyDueDate",
         "createdAt"
       ]
     },
@@ -111,7 +90,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Transaction",
       "type": "object",
-      "description": "Represents a financial transaction, such as maintenance payment or expense.",
+      "description": "Represents a financial transaction (maintenance, extra collection, or expense).",
       "properties": {
         "id": {
           "type": "string",
@@ -131,7 +110,7 @@
         },
         "title": {
           "type": "string",
-          "description": "Title or description of the transaction."
+          "description": "Title of the transaction."
         },
         "amount": {
           "type": "number",
@@ -143,20 +122,15 @@
         },
         "paymentMode": {
           "type": "string",
-          "description": "Mode of payment used for the transaction."
+          "description": "Payment mode used for the transaction."
         },
         "receiptNumber": {
           "type": "string",
-          "description": "Unique receipt number for the transaction."
-        },
-        "paymentDate": {
-          "type": "string",
-          "description": "The date the payment was made.",
-          "format": "date-time"
+          "description": "Receipt number for the transaction."
         },
         "createdAt": {
           "type": "string",
-          "description": "Timestamp indicating when the transaction was recorded.",
+          "description": "Timestamp indicating when the transaction was created.",
           "format": "date-time"
         }
       },
@@ -170,7 +144,6 @@
         "month",
         "paymentMode",
         "receiptNumber",
-        "paymentDate",
         "createdAt"
       ]
     },
@@ -190,7 +163,7 @@
         },
         "expenseType": {
           "type": "string",
-          "description": "Type of expense (e.g., Light Bill, Lift Maintenance, etc.)."
+          "description": "Type of expense (light, lift, water, repair, other)."
         },
         "description": {
           "type": "string",
@@ -215,165 +188,35 @@
         "expenseDate"
       ]
     },
-    "ExpenseType": {
+    "User": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Expense Type",
+      "title": "User",
       "type": "object",
-      "description": "Represents a category for expenses.",
+      "description": "Represents a user of the application, primarily the admin.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the expense type."
+          "description": "Unique identifier for the user."
         },
-        "name": {
+        "fullName": {
           "type": "string",
-          "description": "The name of the expense category (e.g., Lift Maintenance)."
+          "description": "Full name of the user."
         },
-        "createdAt": {
+        "userId": {
           "type": "string",
-          "format": "date-time",
-          "description": "Timestamp indicating when the type was created."
+          "description": "User ID for login purposes."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user, used for password recovery.",
+          "format": "email"
         }
       },
       "required": [
         "id",
-        "name",
-        "createdAt"
-      ]
-    },
-    "ExtraCollection": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Extra Collection",
-      "type": "object",
-      "description": "Represents an extra collection for a specific purpose.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the extra collection."
-        },
-        "buildingId": {
-          "type": "string",
-          "description": "Reference to Building. (Relationship: Building 1:N ExtraCollection)"
-        },
-        "title": {
-          "type": "string",
-          "description": "Title or purpose of the collection."
-        },
-        "totalAmount": {
-          "type": "number",
-          "description": "The total amount to be collected."
-        },
-        "date": {
-          "type": "string",
-          "description": "Date of the collection.",
-          "format": "date-time"
-        },
-        "paidMembers": {
-          "type": "array",
-          "description": "List of member IDs who have paid.",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "required": [
-        "id",
-        "buildingId",
-        "title",
-        "totalAmount",
-        "date"
-      ]
-    },
-    "Due": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Due",
-      "type": "object",
-      "description": "Represents a specific due amount for a member.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the due."
-        },
-        "buildingId": {
-          "type": "string",
-          "description": "Reference to the Building."
-        },
-        "memberId": {
-          "type": "string",
-          "description": "Reference to the Member."
-        },
-        "title": {
-          "type": "string",
-          "description": "A descriptive title for the due."
-        },
-        "type": {
-          "type": "string",
-          "description": "The type or category of the due (e.g., 'Late Fee')."
-        },
-        "amount": {
-          "type": "number",
-          "description": "The amount of the due."
-        },
-        "dueDate": {
-          "type": "string",
-          "format": "date-time",
-          "description": "The date by which the due should be paid."
-        },
-        "paymentDate": {
-          "type": "string",
-          "format": "date-time",
-          "description": "The date the payment was made."
-        },
-        "status": {
-          "type": "string",
-          "enum": [
-            "unpaid",
-            "paid"
-          ],
-          "description": "The payment status of the due."
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time",
-          "description": "Timestamp indicating when the due was created."
-        }
-      },
-      "required": [
-        "id",
-        "buildingId",
-        "memberId",
-        "title",
-        "type",
-        "amount",
-        "dueDate",
-        "status",
-        "createdAt"
-      ]
-    },
-    "DueType": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Due Type",
-      "type": "object",
-      "description": "Represents a category for dues.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the due type."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the due category (e.g., Late Fee)."
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time",
-          "description": "Timestamp indicating when the type was created."
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "createdAt"
+        "fullName",
+        "userId",
+        "email"
       ]
     }
   },
@@ -392,7 +235,7 @@
           "schema": {
             "$ref": "#/backend/entities/Building"
           },
-          "description": "Stores building details. Building acts as the top-level entity, and its ID is used to scope all related data.",
+          "description": "Stores building information.  The 'buildingId' is used to scope all related data (members, transactions, expenses) to this building, which is used for authorization.",
           "params": [
             {
               "name": "buildingId",
@@ -408,7 +251,7 @@
           "schema": {
             "$ref": "#/backend/entities/Member"
           },
-          "description": "Stores member details for a specific building. Includes denormalized 'buildingId' for authorization independence.",
+          "description": "Stores member information. Includes denormalized 'buildingId' for authorization independence.",
           "params": [
             {
               "name": "buildingId",
@@ -428,7 +271,7 @@
           "schema": {
             "$ref": "#/backend/entities/Transaction"
           },
-          "description": "Stores transaction details for a specific building and member. Includes denormalized 'buildingId' for authorization independence.",
+          "description": "Stores transaction data. Includes denormalized 'buildingId' for authorization independence.",
           "params": [
             {
               "name": "buildingId",
@@ -448,7 +291,7 @@
           "schema": {
             "$ref": "#/backend/entities/Expense"
           },
-          "description": "Stores expense details for a specific building. Includes denormalized 'buildingId' for authorization independence.",
+          "description": "Stores expense information. Includes denormalized 'buildingId' for authorization independence.",
           "params": [
             {
               "name": "buildingId",
@@ -462,78 +305,22 @@
         }
       },
       {
-        "path": "/buildings/{buildingId}/extraCollections/{extraCollectionId}",
+        "path": "/users/{userId}",
         "definition": {
-          "entityName": "ExtraCollection",
+          "entityName": "User",
           "schema": {
-            "$ref": "#/backend/entities/ExtraCollection"
+            "$ref": "#/backend/entities/User"
           },
-          "description": "Stores extra collection details for a specific building.",
+          "description": "Stores user profile information. This is a path-based ownership model, ensuring only the user can access their own profile.",
           "params": [
             {
-              "name": "buildingId",
-              "description": "Unique identifier for the building."
-            },
-            {
-              "name": "extraCollectionId",
-              "description": "Unique identifier for the extra collection."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/expenseTypes/{expenseTypeId}",
-        "definition": {
-          "entityName": "ExpenseType",
-          "schema": {
-            "$ref": "#/backend/entities/ExpenseType"
-          },
-          "description": "Stores the list of available expense categories for all buildings.",
-          "params": [
-            {
-              "name": "expenseTypeId",
-              "description": "Unique identifier for the expense type."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/dueTypes/{dueTypeId}",
-        "definition": {
-          "entityName": "DueType",
-          "schema": {
-            "$ref": "#/backend/entities/DueType"
-          },
-          "description": "Stores the list of available due categories for all buildings.",
-          "params": [
-            {
-              "name": "dueTypeId",
-              "description": "Unique identifier for the due type."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/buildings/{buildingId}/dues/{dueId}",
-        "definition": {
-          "entityName": "Due",
-          "schema": {
-            "$ref": "#/backend/entities/Due"
-          },
-          "description": "Stores due details for a specific building and member.",
-          "params": [
-            {
-              "name": "buildingId",
-              "description": "Unique identifier for the building."
-            },
-            {
-              "name": "dueId",
-              "description": "Unique identifier for the due."
+              "name": "userId",
+              "description": "Unique identifier for the user (Firebase Auth UID)."
             }
           ]
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to enable secure and efficient CRUD operations for the BuildingWise application, focusing on authorization independence and clear access control.  The structure follows a hierarchical approach with Buildings at the top level, and Members, Transactions, Dues, and Expenses as subcollections.  This structure aligns with the principle of Path-Based Ownership where each entity is owned by the Building to which it belongs. All subcollections include the `buildingId` as a denormalized field.  This denormalization is CRITICAL for Authorization Independence, as it avoids `get()` calls in security rules to verify building ownership.  The structure supports the required QAPs by segregating data per building, which simplifies list operations (rules are not filters)."
+    "reasoning": "The Firestore structure is designed to manage building maintenance efficiently and securely.  Authorization Independence is achieved by storing the `buildingId` within the `Member`, `Transaction`, and `Expense` documents, eliminating the need for `get()` calls to the `Buildings` collection in security rules.  This enables atomic operations and simplifies rule logic.  The user's userId and other identifying information are stored in the `/users/{userId}` collection. Access control is managed through a combination of path-based ownership for user profiles and shared context using building IDs. Segregation is achieved by placing different entities (buildings, members, transactions, expenses) into separate collections. This simplifies security rules by ensuring that all documents within a collection share the same access requirements. The structure also segregates user data into a dedicated collection, ensuring a homogeneous security posture for user profiles.\n\nQAPs (Rules are not Filters): The structure facilitates secure `list` operations by ensuring that all documents in a collection share the same security requirements. For example, listing members associated with a specific building is secure because the `buildingId` is present in each member document, which can be used in security rules without needing to filter based on potentially insecure client-provided data.\n\nThe inclusion of timestamps (createdAt) in each entity supports data integrity and facilitates chronological ordering and querying. Naming conventions are consistently applied to improve readability and maintainability. Explicit state modeling is not required based on the current feature set, but a `status` field could be added to entities like `Transaction` or `Expense` in the future to support more complex workflows."
   }
 }

@@ -1,23 +1,137 @@
 /**
- * This ruleset is configured for open access during development.
- * It allows any client to perform read, write, and delete operations on the
- * database without requiring authentication.
+ * Core Philosophy: This ruleset implements a centralized administrative model combined with strict user-data privacy.
+ * All building management operations (creating buildings, members, transactions, and expenses) are restricted to
+ * authenticated users, effectively treating any signed-in user as an administrator. This is suitable for an
+ * application with a single or a small group of trusted managers. User profile data is strictly segregated and
+ * follows a user-ownership model, where only the user who created the profile can read or modify it.
  *
- * WARNING: This is insecure and should NOT be used in a production environment.
- * Before deploying to production, you must implement proper security rules
- * that enforce authentication and authorization.
+ * Data Structure: The data is organized into two main top-level collections:
+ * 1. `/users/{userId}`: Stores private user profile information, keyed by the user's Firebase Authentication UID.
+ * 2. `/buildings/{buildingId}`: A top-level collection for all building-related data. All associated data
+ *    (members, transactions, expenses) are stored in subcollections under their respective building document.
+ *
+ * Key Security Decisions:
+ * - Centralized Admin Access: Any authenticated user is granted full CRUD permissions on the entire `/buildings`
+ *   data tree. This simplifies the initial prototype by avoiding a complex role-based system.
+ * - Strict User Privacy: The `/users` collection is locked down. Users can only access their own document at `/users/{request.auth.uid}`.
+ *   Listing users is explicitly disallowed to prevent user enumeration and protect privacy.
+ * - Default Secure: Unauthenticated access is denied everywhere except for allowing a user to create their own user profile document.
+ *
+ * Denormalization for Authorization: The rules rely on the `buildingId` field being denormalized onto `member`,
+ * `transaction`, and `expense` documents. On creation, the rules validate that this denormalized ID matches the
+ * ID in the document path, ensuring relational integrity without costly `get()` calls.
+ *
+ * Structural Segregation: The use of a separate `/users` collection for profiles and a `/buildings` collection
+ * for operational data creates a strong security boundary. Rules for user privacy do not conflict with rules
+ * for data management.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Helper functions for reusable logic
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Checks if the requesting user's UID matches the document's owner ID
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Verifies that a document exists before an update or delete operation
+    function isExistingDoc() {
+      return resource != null;
+    }
+
+    // Combines ownership and existence checks for state-changing operations on existing docs
+    function isExistingOwner(userId) {
+      return isOwner(userId) && isExistingDoc();
+    }
+
     /**
-     * @description Allow all operations on any document in any collection.
-     * @path /{document=**}
-     * @allow (read, write) Anyone, for development purposes.
+     * @description Controls access to user profile documents.
+     * @path /users/{userId}
+     * @allow (create) A new user creating their own profile document: `create /users/user_abc` (auth.uid: 'user_abc').
+     * @allow (get) An authenticated user reading their own profile: `get /users/user_abc` (auth.uid: 'user_abc').
+     * @deny (list) Any user, authenticated or not, listing all user profiles: `list /users`.
+     * @deny (update) A user trying to modify another user's profile: `update /users/user_xyz` (auth.uid: 'user_abc').
+     * @principle Restricts access to a user's own data tree.
      */
-    match /{document=**} {
-      allow read, write: if true;
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Controls access to building documents. Any authenticated user can manage buildings.
+     * @path /buildings/{buildingId}
+     * @allow (create) An authenticated user creating a new building: `create /buildings/bldg_123`.
+     * @allow (list) An authenticated user listing all buildings: `list /buildings`.
+     * @deny (get) An unauthenticated user trying to read a building document: `get /buildings/bldg_123`.
+     * @deny (delete) An unauthenticated user trying to delete a building: `delete /buildings/bldg_123`.
+     * @principle Enforces that only authenticated users (admins) can manage system data.
+     */
+    match /buildings/{buildingId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && isExistingDoc();
+      allow delete: if isSignedIn() && isExistingDoc();
+
+      /**
+       * @description Controls access to building member documents.
+       * @path /buildings/{buildingId}/members/{memberId}
+       * @allow (create) An authenticated user adding a member to a building: `create /buildings/bldg_123/members/mem_456`.
+       * @allow (list) An authenticated user listing all members of a building: `list /buildings/bldg_123/members`.
+       * @deny (create) An unauthenticated user trying to add a member: `create /buildings/bldg_123/members/mem_456`.
+       * @deny (update) An authenticated user trying to update a member with the wrong buildingId: `update /buildings/bldg_123/members/mem_456` with `{ buildingId: 'bldg_999' }`.
+       * @principle Validates relational integrity between parent and child documents.
+       */
+      match /members/{memberId} {
+        allow get: if isSignedIn();
+        allow list: if isSignedIn();
+        allow create: if isSignedIn() && request.resource.data.buildingId == buildingId;
+        allow update: if isSignedIn() && isExistingDoc() && request.resource.data.buildingId == resource.data.buildingId;
+        allow delete: if isSignedIn() && isExistingDoc();
+      }
+
+      /**
+       * @description Controls access to building transaction documents.
+       * @path /buildings/{buildingId}/transactions/{transactionId}
+       * @allow (create) An authenticated user adding a transaction to a building: `create /buildings/bldg_123/transactions/trans_789`.
+       * @allow (list) An authenticated user listing all transactions for a building: `list /buildings/bldg_123/transactions`.
+       * @deny (create) An unauthenticated user trying to add a transaction: `create /buildings/bldg_123/transactions/trans_789`.
+       * @deny (update) An authenticated user trying to change a transaction's buildingId: `update /buildings/bldg_123/transactions/trans_789` with `{ buildingId: 'bldg_999' }`.
+       * @principle Validates relational integrity between parent and child documents.
+       */
+      match /transactions/{transactionId} {
+        allow get: if isSignedIn();
+        allow list: if isSignedIn();
+        allow create: if isSignedIn() && request.resource.data.buildingId == buildingId;
+        allow update: if isSignedIn() && isExistingDoc() && request.resource.data.buildingId == resource.data.buildingId;
+        allow delete: if isSignedIn() && isExistingDoc();
+      }
+
+      /**
+       * @description Controls access to building expense documents.
+       * @path /buildings/{buildingId}/expenses/{expenseId}
+       * @allow (create) An authenticated user adding an expense to a building: `create /buildings/bldg_123/expenses/exp_abc`.
+       * @allow (list) An authenticated user listing all expenses for a building: `list /buildings/bldg_123/expenses`.
+       * @deny (create) An unauthenticated user trying to add an expense: `create /buildings/bldg_123/expenses/exp_abc`.
+       * @deny (update) An authenticated user trying to change an expense's buildingId: `update /buildings/bldg_123/expenses/exp_abc` with `{ buildingId: 'bldg_999' }`.
+       * @principle Validates relational integrity between parent and child documents.
+       */
+      match /expenses/{expenseId} {
+        allow get: if isSignedIn();
+        allow list: if isSignedIn();
+        allow create: if isSignedIn() && request.resource.data.buildingId == buildingId;
+        allow update: if isSignedIn() && isExistingDoc() && request.resource.data.buildingId == resource.data.buildingId;
+        allow delete: if isSignedIn() && isExistingDoc();
+      }
     }
   }
 }

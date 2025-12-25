@@ -58,28 +58,21 @@ export function useCollection<T = any>(
   type StateDataType = ResultItemType[] | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
-    // If the query is explicitly null or undefined, we're not ready to fetch.
     if (!memoizedTargetRefOrQuery) {
-      setIsLoading(true); // Remain in loading state until a valid query is provided
       setData(null);
+      setIsLoading(false);
+      setError(null);
       return;
-    }
-
-    // This is a specific guard against an invalid query object that can be created
-    // if `collectionGroup` is called before firestore is initialized.
-    if (!(memoizedTargetRefOrQuery as any)._query) {
-        setIsLoading(true);
-        setData(null);
-        return;
     }
 
     setIsLoading(true);
     setError(null);
 
+    // Directly use memoizedTargetRefOrQuery as it's assumed to be the final query
     const unsubscribe = onSnapshot(
       memoizedTargetRefOrQuery,
       (snapshot: QuerySnapshot<DocumentData>) => {
@@ -114,10 +107,8 @@ export function useCollection<T = any>(
 
     return () => unsubscribe();
   }, [memoizedTargetRefOrQuery]); // Re-run if the target query/reference changes.
-  
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
-      throw new Error('Passed query was not properly memoized using useMemoFirebase');
+    throw new Error(memoizedTargetRefOrQuery + ' was not properly memoized using useMemoFirebase');
   }
-
   return { data, isLoading, error };
 }
