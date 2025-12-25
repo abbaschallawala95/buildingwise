@@ -8,7 +8,6 @@ import { z } from 'zod';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  fetchSignInMethodsForEmail,
   updateProfile,
 } from 'firebase/auth';
 import { doc, serverTimestamp, getDoc } from 'firebase/firestore';
@@ -44,64 +43,30 @@ async function createOrVerifyInitialUser(auth: any, firestore: any) {
   const fullName = 'Abbas';
 
   try {
-    const signInMethods = await fetchSignInMethodsForEmail(auth, email);
-
-    if (signInMethods.length === 0) {
-      // User does not exist, create them as an admin.
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      await updateProfile(user, { displayName: fullName });
-
-      const userProfileRef = doc(firestore, 'users', user.uid);
-      await setDocumentNonBlocking(userProfileRef, {
-        id: user.uid,
-        fullName: fullName,
-        email: email,
-        role: 'admin',
-        status: 'active',
-        createdAt: serverTimestamp(),
-      }, { merge: true });
-      
-      // Sign out so the user can log in themselves.
-      await auth.signOut();
-
-    } else {
-        // User exists, ensure their profile is correct in Firestore.
-        // We can't get the UID without signing in. To handle this, we will rely on
-        // the fact that the user must log in, and a check on their document will occur.
-        // For bootstrapping, we can attempt a sign-in to get the UID for an update.
-        try {
-            const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            const user = userCredential.user;
-            const userDocRef = doc(firestore, 'users', user.uid);
-            const userDoc = await getDoc(userDocRef);
-            
-            // If the user doc doesn't exist, or has the wrong role/status, fix it.
-            if (!userDoc.exists() || userDoc.data()?.role !== 'admin' || userDoc.data()?.status !== 'active') {
-                await setDocumentNonBlocking(userDocRef, {
-                    id: user.uid,
-                    fullName: fullName,
-                    email: email,
-                    role: 'admin',
-                    status: 'active',
-                }, { merge: true });
-            }
-            // Sign out after the check/update.
-            await auth.signOut();
-        } catch (error) {
-            // This error is expected if the password was changed from the default.
-            // We can ignore it during this initial setup phase, as the user will log in with their new password.
-            console.log("Initial admin user check failed, likely because password was changed. This is okay.");
-        }
-    }
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+    await updateProfile(user, { displayName: fullName });
+    
+    const userProfileRef = doc(firestore, 'users', user.uid);
+    setDocumentNonBlocking(userProfileRef, {
+      id: user.uid,
+      fullName: fullName,
+      email: email,
+      role: 'admin',
+      status: 'active',
+      createdAt: serverTimestamp(),
+    }, { merge: true });
+    
+    // Sign out so the user can log in themselves.
+    await auth.signOut();
   } catch (error: any) {
-    // Avoid throwing errors during initialization, log them instead.
-    console.error("Failed to create or verify initial user:", error);
     if (error.code === 'auth/email-already-in-use') {
-        // This is fine, it means the user exists.
+      // User already exists, which is fine. We can ensure their profile is correct.
+      // For simplicity in this bootstrap phase, we'll just log this and assume
+      // the profile will be handled on login or by a separate admin action if needed.
+      console.log('Initial admin user already exists.');
     } else {
-        // Re-throwing other errors might be desirable in some cases, but for this
-        // bootstrap logic, we want the app to load regardless.
+      console.error("Failed to create or verify initial user:", error);
     }
   }
 }
@@ -125,7 +90,6 @@ export default function LoginPage() {
     if (auth && firestore) {
       createOrVerifyInitialUser(auth, firestore).finally(() => setIsInitializing(false));
     } else if (!auth || !firestore) {
-      // If firebase services aren't ready, don't just hang.
       setIsInitializing(false);
     }
   }, [auth, firestore]);
@@ -141,7 +105,16 @@ export default function LoginPage() {
       const userDocRef = doc(firestore, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
 
-      if (!userDoc.exists() || userDoc.data()?.status !== 'active') {
+      if (!userDoc.exists()) {
+        await setDocumentNonBlocking(userDocRef, {
+            id: user.uid,
+            fullName: user.displayName || 'Abbas',
+            email: user.email,
+            role: 'admin',
+            status: 'active',
+            createdAt: serverTimestamp(),
+        }, { merge: true });
+      } else if (userDoc.data()?.status !== 'active') {
          await auth.signOut();
          toast({
             variant: 'destructive',
