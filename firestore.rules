@@ -65,6 +65,24 @@ service cloud.firestore {
       allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
       allow delete: if isExistingOwner(userId);
     }
+    
+    // Rules for Collection Group Queries
+    // These are required to allow listing of items across all buildings for authenticated users (admins).
+    match /{path=**}/members/{memberId} {
+      allow list: if isSignedIn();
+    }
+    match /{path=**}/transactions/{transactionId} {
+      allow list: if isSignedIn();
+    }
+    match /{path=**}/expenses/{expenseId} {
+      allow list: if isSignedIn();
+    }
+    match /{path=**}/dues/{dueId} {
+      allow list: if isSignedIn();
+    }
+    match /{path=**}/extraCollections/{extraCollectionId} {
+        allow list: if isSignedIn();
+    }
 
     /**
      * @description Controls access to building documents. Any authenticated user can manage buildings.
@@ -132,6 +150,32 @@ service cloud.firestore {
         allow update: if isSignedIn() && isExistingDoc() && request.resource.data.buildingId == resource.data.buildingId;
         allow delete: if isSignedIn() && isExistingDoc();
       }
+      
+       /**
+       * @description Controls access to extra collection documents.
+       */
+      match /extraCollections/{extraCollectionId} {
+          allow get, list, create, update, delete: if isSignedIn();
+      }
+      
+      /**
+       * @description Controls access to due documents.
+       */
+       match /dues/{dueId} {
+           allow get, list, create, update, delete: if isSignedIn();
+       }
+    }
+    
+     /**
+     * @description Controls access to expense and due types.
+     */
+    match /expenseTypes/{expenseTypeId} {
+      allow get, list, create, update, delete: if isSignedIn();
+    }
+    match /dueTypes/{dueTypeId} {
+        allow get, list, create, update, delete: if isSignedIn();
     }
   }
 }
+
+    
