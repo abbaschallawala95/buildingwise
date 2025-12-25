@@ -47,13 +47,13 @@ async function createOrVerifyInitialUser(auth: any, firestore: any) {
     const signInMethods = await fetchSignInMethodsForEmail(auth, email);
 
     if (signInMethods.length === 0) {
-      // User does not exist, create them.
+      // User does not exist, create them as an admin.
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       await updateProfile(user, { displayName: fullName });
 
       const userProfileRef = doc(firestore, 'users', user.uid);
-      setDocumentNonBlocking(userProfileRef, {
+      await setDocumentNonBlocking(userProfileRef, {
         id: user.uid,
         fullName: fullName,
         email: email,
@@ -67,37 +67,39 @@ async function createOrVerifyInitialUser(auth: any, firestore: any) {
 
     } else {
         // User exists, ensure their profile is correct in Firestore.
-        // We can't get the UID without signing in, so we can't reliably update the doc here.
-        // Instead, the login logic will handle checking the status.
-        // To handle the case where the user exists in Auth but not Firestore, or has the wrong status,
-        // we'll attempt a login here. If it succeeds, we can update the doc.
+        // We can't get the UID without signing in. To handle this, we will rely on
+        // the fact that the user must log in, and a check on their document will occur.
+        // For bootstrapping, we can attempt a sign-in to get the UID for an update.
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
             const userDocRef = doc(firestore, 'users', user.uid);
             const userDoc = await getDoc(userDocRef);
             
+            // If the user doc doesn't exist, or has the wrong role/status, fix it.
             if (!userDoc.exists() || userDoc.data()?.role !== 'admin' || userDoc.data()?.status !== 'active') {
-                setDocumentNonBlocking(userDocRef, {
+                await setDocumentNonBlocking(userDocRef, {
                     id: user.uid,
                     fullName: fullName,
                     email: email,
                     role: 'admin',
                     status: 'active',
-                    createdAt: serverTimestamp(),
                 }, { merge: true });
             }
+            // Sign out after the check/update.
             await auth.signOut();
         } catch (error) {
             // This error is expected if the password was changed from the default.
-            // We can ignore it during this initial setup phase.
+            // We can ignore it during this initial setup phase, as the user will log in with their new password.
             console.log("Initial admin user check failed, likely because password was changed. This is okay.");
         }
     }
   } catch (error: any) {
     // Avoid throwing errors during initialization, log them instead.
     console.error("Failed to create or verify initial user:", error);
-    if (error.code !== 'auth/email-already-in-use') {
+    if (error.code === 'auth/email-already-in-use') {
+        // This is fine, it means the user exists.
+    } else {
         // Re-throwing other errors might be desirable in some cases, but for this
         // bootstrap logic, we want the app to load regardless.
     }
