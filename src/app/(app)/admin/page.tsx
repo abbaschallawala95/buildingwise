@@ -68,18 +68,21 @@ export default function AdminPage() {
   const { data: currentUserProfile, isLoading: isLoadingCurrentUser } = useDoc<UserProfile>(currentUserProfileDoc);
   
   useEffect(() => {
-    // Wait until the user profile is explicitly loaded and available.
-    if (!isLoadingCurrentUser && currentUserProfile) {
-      if (currentUserProfile.role !== 'admin') {
-        // If not an admin, redirect.
-        router.replace('/dashboard');
-      } else {
-        // If an admin, grant access.
-        setIsAuthorized(true);
-      }
-    } else if (!isLoadingCurrentUser && !currentUserProfile) {
-        // If loading is finished but there's no profile, they are not authorized.
-        router.replace('/dashboard');
+    // This effect handles the authorization logic.
+    // It will only run when the loading state or the user profile data changes.
+    
+    // If we are still waiting for the user's profile to load, do nothing.
+    if (isLoadingCurrentUser) {
+      return;
+    }
+
+    // After loading, if the user profile exists and the role is 'admin', grant access.
+    if (currentUserProfile && currentUserProfile.role === 'admin') {
+      setIsAuthorized(true);
+    } else {
+      // If the profile doesn't exist, or the role is not 'admin', redirect.
+      // This also handles the case where a non-admin user tries to access the page.
+      router.replace('/dashboard');
     }
   }, [isLoadingCurrentUser, currentUserProfile, router]);
 
