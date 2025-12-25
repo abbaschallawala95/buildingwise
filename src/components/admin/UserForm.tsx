@@ -70,7 +70,7 @@ export function UserForm({ isOpen, setIsOpen, userToEdit }: UserFormProps) {
       fullName: '',
       email: '',
       password: '',
-      role: 'user' as 'admin' | 'user',
+      role: undefined,
     }
   });
 
@@ -87,7 +87,7 @@ export function UserForm({ isOpen, setIsOpen, userToEdit }: UserFormProps) {
           fullName: '',
           email: '',
           password: '',
-          role: 'user',
+          role: undefined,
         });
       }
     }
@@ -125,7 +125,7 @@ export function UserForm({ isOpen, setIsOpen, userToEdit }: UserFormProps) {
 
       } catch (error: any) {
         let description = "An unexpected error occurred.";
-        if (error.message?.includes('auth/email-already-exists')) {
+        if (error.message?.includes('auth/email-already-exists') || error.message?.includes('EMAIL_EXISTS')) {
             description = "This email is already registered.";
         }
          toast({
