@@ -4,15 +4,8 @@ import { useEffect } from 'react';
 import { useForm, type SubmitHandler, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import {
-  createUserWithEmailAndPassword,
-  updateProfile,
-} from 'firebase/auth';
-import {
-  doc,
-  serverTimestamp,
-} from 'firebase/firestore';
-import { useFirestore, updateDocumentNonBlocking, useAuth, setDocumentNonBlocking } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { useFirestore, updateDocumentNonBlocking } from '@/firebase';
 
 import {
   Dialog,
@@ -35,6 +28,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import type { UserProfile } from '@/app/(app)/profile/page';
+import { createUser } from '@/ai/flows/create-user-flow';
 
 const userFormSchema = z.object({
   fullName: z.string().min(3, 'Full name must be at least 3 characters.'),
@@ -60,7 +54,6 @@ interface UserFormProps {
 
 export function UserForm({ isOpen, setIsOpen, userToEdit }: UserFormProps) {
   const firestore = useFirestore();
-  const auth = useAuth();
   const { toast } = useToast();
   
   const isEditing = !!userToEdit;
@@ -77,7 +70,7 @@ export function UserForm({ isOpen, setIsOpen, userToEdit }: UserFormProps) {
       fullName: '',
       email: '',
       password: '',
-      role: undefined,
+      role: 'user' as 'admin' | 'user',
     }
   });
 
@@ -94,7 +87,7 @@ export function UserForm({ isOpen, setIsOpen, userToEdit }: UserFormProps) {
           fullName: '',
           email: '',
           password: '',
-          role: undefined,
+          role: 'user',
         });
       }
     }
@@ -117,22 +110,14 @@ export function UserForm({ isOpen, setIsOpen, userToEdit }: UserFormProps) {
 
     } else {
       // Add logic
-      if (!auth || !firestore) return;
+      if (!data.email || !data.password) return;
       try {
-        const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-        const user = userCredential.user;
-        await updateProfile(user, { displayName: data.fullName });
-
-        const userProfileRef = doc(firestore, 'users', user.uid);
-        setDocumentNonBlocking(userProfileRef, {
-            id: user.uid,
-            fullName: data.fullName,
-            email: data.email,
-            role: data.role,
-            status: 'active',
-            createdAt: serverTimestamp(),
-        }, { merge: true });
-
+        await createUser({
+          email: data.email,
+          password: data.password,
+          fullName: data.fullName,
+        });
+        
         toast({
             title: 'User Created',
             description: `An account for ${data.fullName} has been created.`,
@@ -140,7 +125,7 @@ export function UserForm({ isOpen, setIsOpen, userToEdit }: UserFormProps) {
 
       } catch (error: any) {
         let description = "An unexpected error occurred.";
-        if (error.code === 'auth/email-already-in-use') {
+        if (error.message?.includes('auth/email-already-exists')) {
             description = "This email is already registered.";
         }
          toast({
