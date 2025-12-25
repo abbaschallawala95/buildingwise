@@ -13,6 +13,7 @@ import {
   Settings,
   ListX,
   Tags,
+  BookText,
 } from 'lucide-react';
 import { collectionGroup } from 'firebase/firestore';
 
@@ -34,6 +35,7 @@ const navLinks = [
   { href: '/extra-collections', label: 'Extra Collections', icon: PlusCircle },
   { href: '/expenses', label: 'Expenses', icon: CreditCard },
   { href: '/dues', label: 'Dues', icon: ListX },
+  { href: '/reports', label: 'Reports', icon: BookText },
   { href: '/expense-types', label: 'Expense Types', icon: Settings },
   { href: '/due-types', label: 'Due Types', icon: Tags },
 ];
