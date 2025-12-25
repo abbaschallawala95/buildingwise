@@ -16,7 +16,7 @@ import { doc } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Image from 'next/image';
 
-import { useUser, useFirestore, useAuth, useFirebaseApp, updateDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, useAuth, useFirebaseApp, updateDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -100,7 +100,7 @@ export default function ProfilePage() {
 
     try {
         // 1. Upload new profile picture if selected
-        if (profilePictureFile) {
+        if (profilePictureFile && firebaseApp) {
             const storage = getStorage(firebaseApp);
             const storageRef = ref(storage, `profile-pictures/${user.uid}`);
             const snapshot = await uploadBytes(storageRef, profilePictureFile);
@@ -115,10 +115,10 @@ export default function ProfilePage() {
 
         // 3. Update Firestore profile document
         const userDocRef = doc(firestore, 'users', user.uid);
-        updateDocumentNonBlocking(userDocRef, {
+        setDocumentNonBlocking(userDocRef, {
             fullName: data.fullName,
             photoURL: photoURL,
-        });
+        }, { merge: true });
         
         // 4. Update email if it has changed (requires reauthentication)
         if (data.email !== user.email) {
@@ -267,5 +267,3 @@ export default function ProfilePage() {
     </>
   );
 }
-
-    
