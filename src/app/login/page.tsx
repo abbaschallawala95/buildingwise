@@ -7,7 +7,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  fetchSignInMethodsForEmail,
+  updateProfile
 } from 'firebase/auth';
+import { doc, serverTimestamp } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -22,8 +26,8 @@ import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/icons';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { useAuth } from '@/firebase';
-import { useEffect } from 'react';
+import { useAuth, useFirestore, setDocumentNonBlocking } from '@/firebase';
+import { useEffect, useState } from 'react';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -34,10 +38,46 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+async function createInitialUser(auth: any, firestore: any) {
+  const email = 'abbas@example.com';
+  const password = 'abbas123';
+  const fullName = 'Abbas';
+
+  try {
+    // Check if the user already exists
+    const signInMethods = await fetchSignInMethodsForEmail(auth, email);
+    if (signInMethods.length > 0) {
+      // User already exists, no need to create
+      return;
+    }
+
+    // User does not exist, create them
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+    await updateProfile(user, { displayName: fullName });
+
+    const userProfileRef = doc(firestore, 'users', user.uid);
+    setDocumentNonBlocking(userProfileRef, {
+      id: user.uid,
+      fullName: fullName,
+      email: email,
+      createdAt: serverTimestamp(),
+    }, { merge: true });
+    
+  } catch (error: any) {
+    // We can ignore email-already-in-use errors during this initial setup
+    if (error.code !== 'auth/email-already-in-use') {
+      console.error("Failed to create initial user:", error);
+    }
+  }
+}
+
 export default function LoginPage() {
   const auth = useAuth();
+  const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+  const [isInitializing, setIsInitializing] = useState(true);
 
   const {
     register,
@@ -52,7 +92,11 @@ export default function LoginPage() {
     // Pre-fill the form for the initial user
     setValue('email', 'abbas@example.com');
     setValue('password', 'abbas123');
-  }, [setValue]);
+
+    if (auth && firestore) {
+      createInitialUser(auth, firestore).finally(() => setIsInitializing(false));
+    }
+  }, [auth, firestore, setValue]);
 
 
   const onSubmit: SubmitHandler<LoginFormValues> = async (data) => {
@@ -76,6 +120,14 @@ export default function LoginPage() {
       });
     }
   };
+  
+  if (isInitializing) {
+     return (
+       <div className="flex items-center justify-center min-h-screen bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    )
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-4">
