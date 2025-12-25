@@ -22,6 +22,17 @@ import type { Transaction } from '../transactions/page';
 import type { Expense } from '../expenses/page';
 import type { Due } from '../dues/page';
 
+type CombinedLedgerItem = {
+    id: string;
+    date: any;
+    buildingId: string;
+    memberId?: string;
+    category: string;
+    details: string;
+    amount: number;
+    type: 'income' | 'expense';
+};
+
 export default function ReportsPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -48,36 +59,71 @@ export default function ReportsPage() {
   const buildingMap = useMemo(() => new Map(buildings?.map(b => [b.id, b.buildingName])), [buildings]);
   const memberMap = useMemo(() => new Map(members?.map(m => [m.id, m])), [members]);
 
-  // Data Filtering
+  const allMonths = useMemo(() => {
+    const months = new Set<string>();
+    transactions?.forEach(t => t.month && months.add(t.month));
+    expenses?.forEach(e => {
+      if (e.expenseDate?.toDate) {
+        months.add(new Date(e.expenseDate.toDate()).toLocaleString('default', { month: 'long', year: 'numeric' }));
+      }
+    });
+    return Array.from(months).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+  }, [transactions, expenses]);
+
+
   const filteredData = useMemo(() => {
-    let filteredTransactions = transactions || [];
-    let filteredExpenses = expenses || [];
-    let filteredDues = dues || [];
+    let currentTransactions = transactions || [];
+    let currentExpenses = expenses || [];
+    let currentDues = dues || [];
 
     if (buildingFilter !== 'all') {
-      filteredTransactions = filteredTransactions.filter(t => t.buildingId === buildingFilter);
-      filteredExpenses = filteredExpenses.filter(e => e.buildingId === buildingFilter);
-      filteredDues = filteredDues.filter(d => d.buildingId === buildingFilter);
+      currentTransactions = currentTransactions.filter(t => t.buildingId === buildingFilter);
+      currentExpenses = currentExpenses.filter(e => e.buildingId === buildingFilter);
+      currentDues = currentDues.filter(d => d.buildingId === buildingFilter);
     }
 
     if (monthFilter !== 'all') {
-      filteredTransactions = filteredTransactions.filter(t => t.month === monthFilter);
-      filteredExpenses = filteredExpenses.filter(e => {
+      currentTransactions = currentTransactions.filter(t => t.month === monthFilter);
+      currentExpenses = currentExpenses.filter(e => {
         const expenseMonth = e.expenseDate?.toDate ? new Date(e.expenseDate.toDate()).toLocaleString('default', { month: 'long', year: 'numeric' }) : '';
         return expenseMonth === monthFilter;
       });
-      filteredDues = filteredDues.filter(d => {
-        const dueMonth = d.dueDate?.toDate ? new Date(d.dueDate.toDate()).toLocaleString('default', { month: 'long', year: 'numeric' }) : '';
-        return dueMonth === monthFilter;
-      });
+      // Note: Dues are typically not filtered by month in the same way as transactions/expenses
     }
 
     return {
-      transactions: filteredTransactions,
-      expenses: filteredExpenses,
-      dues: filteredDues,
+      transactions: currentTransactions,
+      expenses: currentExpenses,
+      dues: currentDues, // Dues are filtered by building but not month for accuracy
     };
   }, [transactions, expenses, dues, buildingFilter, monthFilter]);
+
+  
+  const combinedLedger = useMemo((): CombinedLedgerItem[] => {
+    const incomeItems: CombinedLedgerItem[] = filteredData.transactions.map(t => ({
+        id: t.id,
+        date: t.paymentDate || t.createdAt,
+        buildingId: t.buildingId,
+        memberId: t.memberId,
+        category: t.type.replace('_', ' '),
+        details: t.title,
+        amount: t.amount,
+        type: 'income',
+    }));
+    
+    const expenseItems: CombinedLedgerItem[] = filteredData.expenses.map(e => ({
+        id: e.id,
+        date: e.expenseDate,
+        buildingId: e.buildingId,
+        category: e.expenseType,
+        details: e.description,
+        amount: e.amount,
+        type: 'expense',
+    }));
+
+    return [...incomeItems, ...expenseItems].sort((a,b) => (b.date?.seconds || 0) - (a.date?.seconds || 0));
+
+  }, [filteredData.transactions, filteredData.expenses]);
 
 
   const summary = useMemo(() => {
@@ -87,17 +133,6 @@ export default function ReportsPage() {
     return { totalIncome, totalExpenses, netBalance };
   }, [filteredData]);
   
-  const allMonths = useMemo(() => {
-    const months = new Set<string>();
-    transactions?.forEach(t => t.month && months.add(t.month));
-    expenses?.forEach(e => {
-      if (e.expenseDate?.toDate) {
-        months.add(new Date(e.expenseDate.toDate()).toLocaleString('default', { month: 'long', year: 'numeric' }));
-      }
-    });
-    return Array.from(months);
-  }, [transactions, expenses]);
-
 
   const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(amount);
   const formatDate = (date: any) => date?.toDate ? date.toDate().toLocaleDateString() : 'N/A';
@@ -115,20 +150,18 @@ export default function ReportsPage() {
       const wsSummary = XLSX.utils.json_to_sheet(summaryData);
       XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
       
-      // Transactions Sheet
-      const transactionsData = filteredData.transactions.map(t => ({
-        'Date': formatDate(t.createdAt),
-        'Receipt': t.receiptNumber,
-        'Member': memberMap.get(t.memberId)?.fullName || 'N/A',
-        'Building': buildingMap.get(t.buildingId) || 'N/A',
-        'Type': t.type,
-        'Details': t.title,
-        'Month': t.month,
-        'Amount': t.amount,
-        'Payment Mode': t.paymentMode,
+      // Combined Ledger Sheet
+      const ledgerData = combinedLedger.map(item => ({
+        'Date': formatDate(item.date),
+        'Building': buildingMap.get(item.buildingId) || 'N/A',
+        'Type': item.type,
+        'Category': item.category,
+        'Details': item.details,
+        'Member': item.memberId ? (memberMap.get(item.memberId)?.fullName || 'N/A') : 'N/A',
+        'Amount': item.amount,
       }));
-      const wsTransactions = XLSX.utils.json_to_sheet(transactionsData);
-      XLSX.utils.book_append_sheet(wb, wsTransactions, 'All Transactions');
+      const wsLedger = XLSX.utils.json_to_sheet(ledgerData);
+      XLSX.utils.book_append_sheet(wb, wsLedger, 'Income and Expense');
 
       // Dues Sheet
       const duesData = filteredData.dues.map(d => ({
@@ -194,7 +227,7 @@ export default function ReportsPage() {
             <Tabs defaultValue="summary">
                 <TabsList>
                     <TabsTrigger value="summary">Summary</TabsTrigger>
-                    <TabsTrigger value="transactions">All Transactions</TabsTrigger>
+                    <TabsTrigger value="income-expense">Income / Expense</TabsTrigger>
                     <TabsTrigger value="dues">Dues</TabsTrigger>
                 </TabsList>
                 <TabsContent value="summary" className="pt-4">
@@ -213,37 +246,39 @@ export default function ReportsPage() {
                         </Card>
                     </div>
                 </TabsContent>
-                <TabsContent value="transactions" className="pt-4">
+                <TabsContent value="income-expense" className="pt-4">
                     <Table>
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Date</TableHead>
                                 <TableHead>Building</TableHead>
-                                <TableHead>Member</TableHead>
+                                <TableHead>Category</TableHead>
                                 <TableHead>Details</TableHead>
-                                <TableHead>Type</TableHead>
+                                <TableHead>Member</TableHead>
                                 <TableHead className="text-right">Amount</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {isLoading && Array.from({length: 3}).map((_, i) => (
+                            {isLoading && Array.from({length: 5}).map((_, i) => (
                                 <TableRow key={i}>
                                     <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                                     <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                                    <TableCell><Skeleton className="h-6 w-28" /></TableCell>
+                                    <TableCell><Skeleton className="h-4 w-40" /></TableCell>
                                     <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                                    <TableCell><Skeleton className="h-4 w-48" /></TableCell>
-                                    <TableCell><Skeleton className="h-6 w-20" /></TableCell>
                                     <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
                                 </TableRow>
                             ))}
-                            {!isLoading && filteredData.transactions.map(t => (
-                                <TableRow key={t.id}>
-                                    <TableCell>{formatDate(t.createdAt)}</TableCell>
-                                    <TableCell>{buildingMap.get(t.buildingId)}</TableCell>
-                                    <TableCell>{memberMap.get(t.memberId)?.fullName}</TableCell>
-                                    <TableCell>{t.title}</TableCell>
-                                    <TableCell><Badge variant={t.type === 'maintenance' ? 'secondary' : 'default'} className="capitalize">{t.type.replace('_', ' ')}</Badge></TableCell>
-                                    <TableCell className="text-right font-medium">{formatCurrency(t.amount)}</TableCell>
+                            {!isLoading && combinedLedger.map(item => (
+                                <TableRow key={item.id}>
+                                    <TableCell>{formatDate(item.date)}</TableCell>
+                                    <TableCell>{buildingMap.get(item.buildingId)}</TableCell>
+                                    <TableCell><Badge variant={item.type === 'income' ? 'secondary' : 'destructive'} className="capitalize">{item.category}</Badge></TableCell>
+                                    <TableCell>{item.details}</TableCell>
+                                    <TableCell>{item.memberId ? memberMap.get(item.memberId)?.fullName : 'N/A'}</TableCell>
+                                    <TableCell className={`text-right font-medium ${item.type === 'expense' ? 'text-destructive' : ''}`}>
+                                        {item.type === 'expense' ? '-' : ''}{formatCurrency(item.amount)}
+                                    </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
