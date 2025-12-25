@@ -21,6 +21,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/PageHeader';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +36,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import type { UserProfile } from '../profile/page';
+import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { UserForm } from '@/components/admin/UserForm';
 
 export default function AdminPage() {
   const firestore = useFirestore();
@@ -35,6 +45,9 @@ export default function AdminPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserProfile | undefined>(undefined);
+
 
   const usersCollection = useMemoFirebase(
     () => (firestore ? collection(firestore, 'users') : null),
@@ -66,6 +79,16 @@ export default function AdminPage() {
 
 
   const isLoading = isLoadingUsers || isLoadingCurrentUser;
+
+  const handleAddUser = () => {
+    setSelectedUser(undefined);
+    setIsFormOpen(true);
+  };
+
+  const handleEditUser = (user: UserProfile) => {
+    setSelectedUser(user);
+    setIsFormOpen(true);
+  };
 
   const handleStatusChange = (user: UserProfile, newStatus: boolean) => {
     if (!firestore || !currentUserProfile) return;
@@ -113,10 +136,17 @@ export default function AdminPage() {
 
   return (
     <>
-      <PageHeader title="Admin Panel" />
+      <PageHeader title="User Management">
+         <Button size="sm" className="gap-1" onClick={handleAddUser}>
+          <PlusCircle className="h-3.5 w-3.5" />
+          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+            Add User
+          </span>
+        </Button>
+      </PageHeader>
       <Card>
         <CardHeader>
-          <CardTitle>User Management</CardTitle>
+          <CardTitle>User List</CardTitle>
           <CardDescription>
             Manage user roles and access to the application.
           </CardDescription>
@@ -129,7 +159,8 @@ export default function AdminPage() {
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Active</TableHead>
+                <TableHead>Active</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -140,12 +171,13 @@ export default function AdminPage() {
                     <TableCell><Skeleton className="h-4 w-[200px]" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-[80px]" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-[80px]" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-6 w-12 ml-auto" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-12" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-9 w-[50px] ml-auto" /></TableCell>
                   </TableRow>
                 ))}
               {error && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-destructive">
+                  <TableCell colSpan={6} className="text-center text-destructive">
                     Error loading users: {error.message}
                   </TableCell>
                 </TableRow>
@@ -172,7 +204,7 @@ export default function AdminPage() {
                         {user.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell>
                        <Switch
                         checked={user.status === 'active'}
                         onCheckedChange={(checked) => handleStatusChange(user, checked)}
@@ -180,11 +212,26 @@ export default function AdminPage() {
                         aria-label={`Activate or deactivate ${user.fullName}`}
                       />
                     </TableCell>
+                    <TableCell className="text-right">
+                       <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => handleEditUser(user)}>Edit User</DropdownMenuItem>
+                           <DropdownMenuItem className="text-destructive" disabled>Delete User</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
                   </TableRow>
                 ))}
               {!isLoading && !error && sortedUsers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     No users found.
                   </TableCell>
                 </TableRow>
@@ -193,6 +240,12 @@ export default function AdminPage() {
           </Table>
         </CardContent>
       </Card>
+      
+      <UserForm
+        isOpen={isFormOpen}
+        setIsOpen={setIsFormOpen}
+        userToEdit={selectedUser}
+      />
     </>
   );
 }
