@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { collection, doc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useDoc } from '@/firebase/firestore/use-doc';
+import { useRouter } from 'next/navigation';
+
 
 import {
   Card,
@@ -35,35 +37,51 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import type { UserProfile } from '../profile/page';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { Loader2, MoreHorizontal, PlusCircle } from 'lucide-react';
 import { UserForm } from '@/components/admin/UserForm';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export default function AdminPage() {
   const firestore = useFirestore();
   const { user: currentUser } = useUser();
+  const router = useRouter();
   const { toast } = useToast();
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | undefined>(undefined);
 
+  const currentUserProfileDoc = useMemoFirebase(
+    () => (firestore && currentUser ? doc(firestore, 'users', currentUser.uid) : null),
+    [firestore, currentUser]
+  );
+  const { data: currentUserProfile, isLoading: isLoadingCurrentUser } = useDoc<UserProfile>(currentUserProfileDoc);
+
+  // Authorize
+  useEffect(() => {
+    // Wait until the profile is loaded
+    if (!isLoadingCurrentUser) {
+      // If there's no profile or the role is not admin, redirect
+      if (!currentUserProfile || currentUserProfile.role !== 'admin') {
+        toast({
+          variant: 'destructive',
+          title: 'Unauthorized',
+          description: 'You do not have permission to access the admin page.',
+        });
+        router.push('/dashboard');
+      }
+    }
+  }, [currentUserProfile, isLoadingCurrentUser, router, toast]);
 
   const usersCollection = useMemoFirebase(
     () => (firestore ? collection(firestore, 'users') : null),
     [firestore]
   );
   
-  const currentUserProfileDoc = useMemoFirebase(
-    () => (firestore && currentUser ? doc(firestore, 'users', currentUser.uid) : null),
-    [firestore, currentUser]
-  );
-
   const {
     data: users,
     isLoading: isLoadingUsers,
     error,
   } = useCollection<UserProfile>(usersCollection);
-
-  const { data: currentUserProfile, isLoading: isLoadingCurrentUser } = useDoc<UserProfile>(currentUserProfileDoc);
 
   const isLoading = isLoadingUsers || isLoadingCurrentUser;
 
@@ -110,9 +128,15 @@ export default function AdminPage() {
     return [...users].sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
   }, [users]);
   
-  // The authorization check is handled by the sidebar link visibility and the overall app layout.
-  // A non-admin user should not be able to navigate here.
-  // The faulty redirect logic has been removed.
+  // Wait for authorization check
+  if (isLoadingCurrentUser || !currentUserProfile || currentUserProfile.role !== 'admin') {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <p className="ml-2">Verifying authorization...</p>
+      </div>
+    );
+  }
 
   return (
     <>
