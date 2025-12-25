@@ -121,6 +121,7 @@ export default function RegisterPage() {
                 type="text"
                 placeholder="John Doe"
                 {...register('fullName')}
+                autoComplete="name"
               />
               {errors.fullName && (
                 <p className="text-sm text-destructive">
@@ -135,6 +136,7 @@ export default function RegisterPage() {
                 type="email"
                 placeholder="m@example.com"
                 {...register('email')}
+                autoComplete="email"
               />
               {errors.email && (
                 <p className="text-sm text-destructive">
@@ -148,6 +150,7 @@ export default function RegisterPage() {
                 id="password"
                 type="password"
                 {...register('password')}
+                autoComplete="new-password"
               />
               {errors.password && (
                 <p className="text-sm text-destructive">
@@ -161,6 +164,7 @@ export default function RegisterPage() {
                 id="confirmPassword"
                 type="password"
                 {...register('confirmPassword')}
+                autoComplete="new-password"
               />
               {errors.confirmPassword && (
                 <p className="text-sm text-destructive">

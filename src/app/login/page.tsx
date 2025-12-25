@@ -89,17 +89,16 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
-    // Pre-fill the form for the initial user
-    setValue('email', 'abbas@example.com');
-    setValue('password', 'abbas123');
-
     if (auth && firestore) {
       createInitialUser(auth, firestore).finally(() => setIsInitializing(false));
+    } else {
+        setIsInitializing(false);
     }
   }, [auth, firestore, setValue]);
 
 
   const onSubmit: SubmitHandler<LoginFormValues> = async (data) => {
+    if (!auth) return;
     try {
       await signInWithEmailAndPassword(auth, data.email, data.password);
       toast({
@@ -150,6 +149,7 @@ export default function LoginPage() {
                 type="email"
                 placeholder="m@example.com"
                 {...register('email')}
+                autoComplete="email"
               />
               {errors.email && (
                 <p className="text-sm text-destructive">
@@ -165,6 +165,7 @@ export default function LoginPage() {
                 id="password"
                 type="password"
                 {...register('password')}
+                autoComplete="current-password"
               />
               {errors.password && (
                 <p className="text-sm text-destructive">
