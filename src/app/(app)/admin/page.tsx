@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { collection, doc } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, useUser, updateDocumentNonBlocking } from '@/firebase';
-import { useRouter } from 'next/navigation';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useDoc } from '@/firebase/firestore/use-doc';
 
 import {
@@ -38,13 +37,12 @@ import { useToast } from '@/hooks/use-toast';
 import type { UserProfile } from '../profile/page';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { UserForm } from '@/components/admin/UserForm';
+import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export default function AdminPage() {
   const firestore = useFirestore();
   const { user: currentUser } = useUser();
   const { toast } = useToast();
-  const router = useRouter();
-  const [isAuthorized, setIsAuthorized] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | undefined>(undefined);
 
@@ -66,26 +64,6 @@ export default function AdminPage() {
   } = useCollection<UserProfile>(usersCollection);
 
   const { data: currentUserProfile, isLoading: isLoadingCurrentUser } = useDoc<UserProfile>(currentUserProfileDoc);
-  
-  useEffect(() => {
-    // This effect handles the authorization logic.
-    // It will only run when the loading state or the user profile data changes.
-    
-    // If we are still waiting for the user's profile to load, do nothing.
-    if (isLoadingCurrentUser) {
-      return;
-    }
-
-    // After loading, if the user profile exists and the role is 'admin', grant access.
-    if (currentUserProfile && currentUserProfile.role === 'admin') {
-      setIsAuthorized(true);
-    } else {
-      // If the profile doesn't exist, or the role is not 'admin', redirect.
-      // This also handles the case where a non-admin user tries to access the page.
-      router.replace('/dashboard');
-    }
-  }, [isLoadingCurrentUser, currentUserProfile, router]);
-
 
   const isLoading = isLoadingUsers || isLoadingCurrentUser;
 
@@ -132,16 +110,9 @@ export default function AdminPage() {
     return [...users].sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
   }, [users]);
   
-  if (!isAuthorized) {
-    return (
-        <div className="flex h-full min-h-[50vh] flex-col items-center justify-center gap-4">
-            <div className="text-center">
-                <h2 className="text-xl font-semibold">Verifying Authorization...</h2>
-                <p className="text-muted-foreground">Please wait while we check your permissions.</p>
-            </div>
-        </div>
-    );
-  }
+  // The authorization check is handled by the sidebar link visibility and the overall app layout.
+  // A non-admin user should not be able to navigate here.
+  // The faulty redirect logic has been removed.
 
   return (
     <>
