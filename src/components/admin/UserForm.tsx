@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useForm, type SubmitHandler } from 'react-hook-form';
+import { useForm, type SubmitHandler, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -36,16 +36,20 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import type { UserProfile } from '@/app/(app)/profile/page';
 
-const addUserSchema = z.object({
+const userFormSchema = z.object({
   fullName: z.string().min(3, 'Full name must be at least 3 characters.'),
-  email: z.string().email('Please enter a valid email address.'),
-  password: z.string().min(6, 'Password must be at least 6 characters.'),
-  role: z.enum(['admin', 'user']),
-});
-
-const editUserSchema = z.object({
-  fullName: z.string().min(3, 'Full name must be at least 3 characters.'),
-  role: z.enum(['admin', 'user']),
+  email: z.string().email('Please enter a valid email address.').optional(),
+  password: z.string().min(6, 'Password must be at least 6 characters.').optional(),
+  role: z.enum(['admin', 'user'], { required_error: 'Please select a role.' }),
+}).refine(data => {
+  // If email is present, password must be present (for new user creation)
+  if (data.email) {
+    return !!data.password;
+  }
+  return true;
+}, {
+  message: 'Password is required when creating a new user.',
+  path: ['password'],
 });
 
 interface UserFormProps {
@@ -60,31 +64,37 @@ export function UserForm({ isOpen, setIsOpen, userToEdit }: UserFormProps) {
   const { toast } = useToast();
   
   const isEditing = !!userToEdit;
-  
+
   const {
     register,
     handleSubmit,
     reset,
     control,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm({
-    resolver: zodResolver(isEditing ? editUserSchema : addUserSchema),
+    resolver: zodResolver(userFormSchema),
+    defaultValues: {
+      fullName: '',
+      email: '',
+      password: '',
+      role: undefined,
+    }
   });
 
   useEffect(() => {
     if (isOpen) {
-      if (isEditing) {
+      if (isEditing && userToEdit) {
         reset({
           fullName: userToEdit.fullName,
           role: userToEdit.role,
+          email: userToEdit.email, // Keep email for context, but it won't be edited
         });
       } else {
         reset({
           fullName: '',
           email: '',
           password: '',
-          role: 'user',
+          role: undefined,
         });
       }
     }
@@ -100,9 +110,6 @@ export function UserForm({ isOpen, setIsOpen, userToEdit }: UserFormProps) {
             role: data.role,
         });
 
-        // It is not possible to update a user's display name in Auth from a client-side admin action
-        // without having them re-authenticate. We will only update Firestore here.
-
         toast({
             title: 'User Updated',
             description: `${data.fullName}'s details have been updated.`,
@@ -112,11 +119,7 @@ export function UserForm({ isOpen, setIsOpen, userToEdit }: UserFormProps) {
       // Add logic
       if (!auth || !firestore) return;
       try {
-        // We need a temporary auth instance to create a user without signing out the admin
-        const tempApp = auth.app;
-        const tempAuth = auth;
-
-        const userCredential = await createUserWithEmailAndPassword(tempAuth, data.email, data.password);
+        const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
         const user = userCredential.user;
         await updateProfile(user, { displayName: data.fullName });
 
@@ -184,19 +187,25 @@ export function UserForm({ isOpen, setIsOpen, userToEdit }: UserFormProps) {
 
             <div className="grid gap-2">
               <Label htmlFor="role">Role</Label>
-              <Select
-                  onValueChange={(value) => setValue('role', value as 'admin' | 'user')}
-                  defaultValue={userToEdit?.role || 'user'}
-                  disabled={userToEdit?.email === 'abbas@example.com'}
-              >
-                  <SelectTrigger>
+              <Controller
+                name="role"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={userToEdit?.email === 'abbas@example.com'}
+                  >
+                    <SelectTrigger>
                       <SelectValue placeholder="Select a role" />
-                  </SelectTrigger>
-                  <SelectContent>
+                    </SelectTrigger>
+                    <SelectContent>
                       <SelectItem value="user">User</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
-                  </SelectContent>
-              </Select>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
               {errors.role && <p className="text-sm text-destructive">{(errors.role as any).message}</p>}
             </div>
           </div>
