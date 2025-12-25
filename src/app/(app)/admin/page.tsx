@@ -1,11 +1,9 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { collection, doc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useDoc } from '@/firebase/firestore/use-doc';
-import { useRouter } from 'next/navigation';
-
 
 import {
   Card,
@@ -44,7 +42,6 @@ import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 export default function AdminPage() {
   const firestore = useFirestore();
   const { user: currentUser } = useUser();
-  const router = useRouter();
   const { toast } = useToast();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -70,21 +67,6 @@ export default function AdminPage() {
     error,
   } = useCollection<UserProfile>(usersCollection);
 
-
-  // Authorize and redirect if not an admin
-  useEffect(() => {
-    // Wait until the profile is loaded before making a decision
-    if (!isLoadingCurrentUser) {
-      if (!isUserAdmin) {
-        toast({
-          variant: 'destructive',
-          title: 'Unauthorized',
-          description: 'You do not have permission to access the admin page.',
-        });
-        router.push('/dashboard');
-      }
-    }
-  }, [isUserAdmin, isLoadingCurrentUser, router, toast]);
 
   const isLoading = isLoadingUsers || isLoadingCurrentUser;
 
