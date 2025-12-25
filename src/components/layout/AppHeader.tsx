@@ -71,7 +71,7 @@ function HeaderContent() {
       () => (firestore && user ? doc(firestore, 'users', user.uid) : null),
       [firestore, user]
     );
-    const { data: userProfile } = useDoc<UserProfile>(userProfileDoc);
+    const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileDoc);
 
     const handleSignOut = async () => {
       if (auth) {

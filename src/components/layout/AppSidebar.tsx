@@ -70,7 +70,7 @@ export function AppSidebar() {
     () => (firestore && user ? doc(firestore, 'users', user.uid) : null),
     [firestore, user]
   );
-  const { data: userProfile } = useDoc<UserProfile>(userProfileDoc);
+  const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileDoc);
 
   return (
     <div className="hidden border-r bg-card lg:block">
