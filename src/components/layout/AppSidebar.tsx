@@ -16,16 +16,18 @@ import {
   BookText,
   UserCircle,
   History,
+  ShieldCheck,
 } from 'lucide-react';
-import { collectionGroup } from 'firebase/firestore';
+import { collection, collectionGroup, doc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Logo } from '../icons';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { Member } from '@/app/(app)/members/page';
+import type { UserProfile } from '@/app/(app)/profile/page';
 
 
 const navLinks = [
@@ -39,6 +41,7 @@ const navLinks = [
   { href: '/dues', label: 'Dues', icon: ListX },
   { href: '/reports', label: 'Reports', icon: BookText },
   { href: '/logs', label: 'Logs', icon: History },
+  { href: '/admin', label: 'Admin', icon: ShieldCheck, adminOnly: true },
   { href: '/expense-types', label: 'Expense Types', icon: Settings },
   { href: '/due-types', label: 'Due Types', icon: Tags },
 ];
@@ -51,6 +54,7 @@ const secondaryNavLinks = [
 export function AppSidebar() {
   const pathname = usePathname();
   const firestore = useFirestore();
+  const { user } = useUser();
 
   const membersCollectionGroup = useMemoFirebase(
     () => (firestore ? collectionGroup(firestore, 'members') : null),
@@ -60,6 +64,12 @@ export function AppSidebar() {
   const { data: members, isLoading: isLoadingMembers } = useCollection<Member>(membersCollectionGroup);
   
   const memberCount = members?.length || 0;
+
+  const userProfileDoc = useMemoFirebase(
+    () => (firestore && user ? doc(firestore, 'users', user.uid) : null),
+    [firestore, user]
+  );
+  const { data: userProfile } = useDoc<UserProfile>(userProfileDoc);
 
   return (
     <div className="hidden border-r bg-card lg:block">
@@ -79,6 +89,9 @@ export function AppSidebar() {
         <div className="flex-1 overflow-auto py-2">
           <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
             {navLinks.map((link) => {
+              if (link.adminOnly && userProfile?.role !== 'admin') {
+                return null;
+              }
               const isActive = pathname === link.href;
               return (
                 <Link

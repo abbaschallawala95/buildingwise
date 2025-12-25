@@ -11,7 +11,7 @@ import {
   fetchSignInMethodsForEmail,
   updateProfile
 } from 'firebase/auth';
-import { doc, serverTimestamp } from 'firebase/firestore';
+import { doc, serverTimestamp, getDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -61,6 +61,8 @@ async function createInitialUser(auth: any, firestore: any) {
       id: user.uid,
       fullName: fullName,
       email: email,
+      role: 'admin',
+      status: 'active',
       createdAt: serverTimestamp(),
     }, { merge: true });
     
@@ -98,9 +100,25 @@ export default function LoginPage() {
 
 
   const onSubmit: SubmitHandler<LoginFormValues> = async (data) => {
-    if (!auth) return;
+    if (!auth || !firestore) return;
     try {
-      await signInWithEmailAndPassword(auth, data.email, data.password);
+      const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
+      const user = userCredential.user;
+
+      // Check user status in Firestore
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists() || userDoc.data()?.status !== 'active') {
+         await auth.signOut();
+         toast({
+            variant: 'destructive',
+            title: 'Login Failed',
+            description: 'Your account is inactive or does not exist.',
+         });
+         return;
+      }
+
       toast({
         title: 'Login Successful',
         description: "Welcome back!",

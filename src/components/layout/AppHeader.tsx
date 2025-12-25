@@ -17,6 +17,7 @@ import {
   UserCircle2,
   LogOut,
   History,
+  ShieldCheck,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
@@ -35,9 +36,11 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTr
 import { Logo } from '../icons';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { useAuth, useUser } from '@/firebase';
+import { useAuth, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UserProfile } from '@/app/(app)/profile/page';
+import { doc } from 'firebase/firestore';
 
 const navLinks = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -50,6 +53,7 @@ const navLinks = [
     { href: "/dues", label: "Dues", icon: ListX },
     { href: "/reports", label: "Reports", icon: BookText },
     { href: "/logs", label: "Logs", icon: History },
+    { href: "/admin", label: "Admin", icon: ShieldCheck, adminOnly: true },
     { href: "/expense-types", label: "Expense Types", icon: Settings },
     { href: "/due-types", label: "Due Types", icon: Tags },
 ];
@@ -59,6 +63,13 @@ function HeaderContent() {
     const auth = useAuth();
     const { user } = useUser();
     const router = useRouter();
+    const firestore = useFirestore();
+
+    const userProfileDoc = useMemoFirebase(
+      () => (firestore && user ? doc(firestore, 'users', user.uid) : null),
+      [firestore, user]
+    );
+    const { data: userProfile } = useDoc<UserProfile>(userProfileDoc);
 
     const handleSignOut = async () => {
       await signOut(auth);
@@ -91,6 +102,9 @@ function HeaderContent() {
               <Logo />
             </Link>
             {navLinks.map(link => {
+                if (link.adminOnly && userProfile?.role !== 'admin') {
+                    return null;
+                }
                 const isActive = pathname === link.href;
                 return (
                     <Link

@@ -16,7 +16,7 @@ import { doc } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Image from 'next/image';
 
-import { useUser, useFirestore, useAuth, useFirebaseApp, updateDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, useAuth, useFirebaseApp, setDocumentNonBlocking } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -24,6 +24,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, UserCircle2 } from 'lucide-react';
+
+export interface UserProfile {
+  id: string;
+  fullName: string;
+  email: string;
+  photoURL?: string;
+  role: 'admin' | 'user';
+  status: 'active' | 'inactive';
+  createdAt: any;
+}
 
 // Validation Schemas
 const profileSchema = z.object({

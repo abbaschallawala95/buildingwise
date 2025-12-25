@@ -76,6 +76,8 @@ export default function RegisterPage() {
         id: user.uid,
         fullName: data.fullName,
         email: data.email,
+        role: 'user', // Default role for new sign-ups
+        status: 'active', // Default status for new sign-ups
         createdAt: serverTimestamp(),
       }, { merge: true });
 

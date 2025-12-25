@@ -400,6 +400,16 @@
             "format": "uri",
             "description": "URL of the user's profile picture."
         },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "user"],
+          "description": "The user's role in the application."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "inactive"],
+          "description": "The user's status."
+        },
         "createdAt": {
           "type": "string",
           "format": "date-time",
@@ -410,6 +420,8 @@
         "id",
         "fullName",
         "email",
+        "role",
+        "status",
         "createdAt"
       ]
     },
