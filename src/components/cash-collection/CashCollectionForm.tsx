@@ -5,7 +5,7 @@ import { useForm, type SubmitHandler, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { collection, serverTimestamp, Timestamp, doc } from 'firebase/firestore';
-import { useFirestore, useCollection, addDocumentNonBlocking, useMemoFirebase, useAuth, updateDocumentNonBlocking } from '@/firebase';
+import { useFirestore, addDocumentNonBlocking, useAuth, updateDocumentNonBlocking } from '@/firebase';
 import { format, parseISO } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
@@ -82,37 +82,43 @@ export function CashCollectionForm({ isOpen, setIsOpen, collectionToEdit, buildi
   
   useEffect(() => {
     if(isOpen) {
-        if(collectionToEdit) {
+        const defaultDate = format(new Date(), 'yyyy-MM-dd');
+        const defaultValues = { date: defaultDate, buildingId: '', notes: '' };
+        
+        if (collectionToEdit) {
             setActiveTab(collectionToEdit.type);
-            const defaultVals = {
+            const editDefaults = {
                 buildingId: collectionToEdit.buildingId,
                 date: toInputDate(collectionToEdit.date),
                 notes: collectionToEdit.notes || '',
             };
             if(collectionToEdit.type === 'cash') {
                 cashForm.reset({
-                    ...defaultVals,
-                    d500: collectionToEdit.denominations?.d500 || undefined,
-                    d200: collectionToEdit.denominations?.d200 || undefined,
-                    d100: collectionToEdit.denominations?.d100 || undefined,
-                    d50: collectionToEdit.denominations?.d50 || undefined,
-                    d20: collectionToEdit.denominations?.d20 || undefined,
-                    d10: collectionToEdit.denominations?.d10 || undefined,
-                    d5: collectionToEdit.denominations?.d5 || undefined,
-                    d2: collectionToEdit.denominations?.d2 || undefined,
-                    d1: collectionToEdit.denominations?.d1 || undefined,
-                })
+                    ...editDefaults,
+                    d500: collectionToEdit.denominations?.d500 || 0,
+                    d200: collectionToEdit.denominations?.d200 || 0,
+                    d100: collectionToEdit.denominations?.d100 || 0,
+                    d50: collectionToEdit.denominations?.d50 || 0,
+                    d20: collectionToEdit.denominations?.d20 || 0,
+                    d10: collectionToEdit.denominations?.d10 || 0,
+                    d5: collectionToEdit.denominations?.d5 || 0,
+                    d2: collectionToEdit.denominations?.d2 || 0,
+                    d1: collectionToEdit.denominations?.d1 || 0,
+                });
+                onlineForm.reset(defaultValues);
             } else {
                  onlineForm.reset({
-                    ...defaultVals,
+                    ...editDefaults,
                     amount: collectionToEdit.totalAmount,
                     paymentMode: collectionToEdit.paymentMode || '',
                     transactionId: collectionToEdit.transactionId || '',
-                })
+                });
+                cashForm.reset(defaultValues);
             }
         } else {
-            cashForm.reset({ date: format(new Date(), 'yyyy-MM-dd'), buildingId: '', notes: '' });
-            onlineForm.reset({ date: format(new Date(), 'yyyy-MM-dd'), buildingId: '', notes: '' });
+            cashForm.reset(defaultValues);
+            onlineForm.reset(defaultValues);
+            setActiveTab('cash');
         }
     }
   }, [isOpen, collectionToEdit, cashForm, onlineForm]);
@@ -156,33 +162,29 @@ export function CashCollectionForm({ isOpen, setIsOpen, collectionToEdit, buildi
       type: 'cash' as const,
     };
 
-    try {
-        if(isEditing && collectionToEdit) {
-            updateDocumentNonBlocking(doc(firestore, 'cashCollections', collectionToEdit.id), collectionData);
-             createLog(firestore, auth, {
-              action: 'updated',
-              entityType: 'Cash Collection',
-              entityId: collectionToEdit.id,
-              description: `Updated cash collection of ${formatCurrency(totalCashAmount)}`,
+    if(isEditing && collectionToEdit) {
+        updateDocumentNonBlocking(doc(firestore, 'cashCollections', collectionToEdit.id), collectionData);
+         createLog(firestore, auth, {
+          action: 'updated',
+          entityType: 'Cash Collection',
+          entityId: collectionToEdit.id,
+          description: `Updated cash collection of ${formatCurrency(totalCashAmount)}`,
+        });
+        toast({ title: 'Success!', description: 'Cash collection updated successfully.' });
+    } else {
+        const collectionRef = collection(firestore, 'cashCollections');
+        const docRef = await addDocumentNonBlocking(collectionRef, {...collectionData, createdAt: serverTimestamp()});
+        if (docRef) {
+            createLog(firestore, auth, {
+            action: 'created',
+            entityType: 'Cash Collection',
+            entityId: docRef.id,
+            description: `Logged cash collection of ${formatCurrency(totalCashAmount)}`,
             });
-            toast({ title: 'Success!', description: 'Cash collection updated successfully.' });
-        } else {
-            const collectionRef = collection(firestore, 'cashCollections');
-            const docRef = await addDocumentNonBlocking(collectionRef, {...collectionData, createdAt: serverTimestamp()});
-            if (docRef) {
-                createLog(firestore, auth, {
-                action: 'created',
-                entityType: 'Cash Collection',
-                entityId: docRef.id,
-                description: `Logged cash collection of ${formatCurrency(totalCashAmount)}`,
-                });
-            }
-            toast({ title: 'Success!', description: 'Cash collection recorded successfully.' });
         }
-        setIsOpen(false);
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not record collection.' });
+        toast({ title: 'Success!', description: 'Cash collection recorded successfully.' });
     }
+    setIsOpen(false);
   };
   
   const onOnlineSubmit: SubmitHandler<OnlineFormValues> = async (data) => {
@@ -199,33 +201,29 @@ export function CashCollectionForm({ isOpen, setIsOpen, collectionToEdit, buildi
       type: 'online' as const,
     };
     
-    try {
-       if(isEditing && collectionToEdit) {
-            updateDocumentNonBlocking(doc(firestore, 'cashCollections', collectionToEdit.id), collectionData);
+    if(isEditing && collectionToEdit) {
+        updateDocumentNonBlocking(doc(firestore, 'cashCollections', collectionToEdit.id), collectionData);
+        createLog(firestore, auth, {
+            action: 'updated',
+            entityType: 'Cash Collection',
+            entityId: collectionToEdit.id,
+            description: `Updated online transaction of ${formatCurrency(data.amount)}`,
+        });
+        toast({ title: "Success!", description: "Online transaction updated successfully." });
+    } else {
+        const collectionRef = collection(firestore, 'cashCollections');
+        const docRef = await addDocumentNonBlocking(collectionRef, {...collectionData, createdAt: serverTimestamp()});
+        if (docRef) {
             createLog(firestore, auth, {
-                action: 'updated',
+                action: 'created',
                 entityType: 'Cash Collection',
-                entityId: collectionToEdit.id,
-                description: `Updated online transaction of ${formatCurrency(data.amount)}`,
+                entityId: docRef.id,
+                description: `Logged online transaction of ${formatCurrency(data.amount)}`,
             });
-            toast({ title: "Success!", description: "Online transaction updated successfully." });
-        } else {
-            const collectionRef = collection(firestore, 'cashCollections');
-            const docRef = await addDocumentNonBlocking(collectionRef, {...collectionData, createdAt: serverTimestamp()});
-            if (docRef) {
-                createLog(firestore, auth, {
-                    action: 'created',
-                    entityType: 'Cash Collection',
-                    entityId: docRef.id,
-                    description: `Logged online transaction of ${formatCurrency(data.amount)}`,
-                });
-            }
-            toast({ title: "Success!", description: "Online transaction recorded successfully." });
         }
-        setIsOpen(false);
-    } catch (error) {
-        toast({ variant: "destructive", title: "Error", description: "Could not record transaction." });
+        toast({ title: "Success!", description: "Online transaction recorded successfully." });
     }
+    setIsOpen(false);
   };
   
    const formatCurrency = (amount: number) =>
@@ -256,18 +254,24 @@ export function CashCollectionForm({ isOpen, setIsOpen, collectionToEdit, buildi
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="cashBuildingId">Building</Label>
-                            <Select onValueChange={(v) => cashForm.setValue('buildingId', v)} value={cashForm.watch('buildingId')}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a building" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {buildings?.map((building) => (
-                                    <SelectItem key={building.id} value={building.id}>
-                                        {building.buildingName}
-                                    </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <Controller
+                                name="buildingId"
+                                control={cashForm.control}
+                                render={({ field }) => (
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select a building" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {buildings?.map((building) => (
+                                            <SelectItem key={building.id} value={building.id}>
+                                                {building.buildingName}
+                                            </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                            />
                             {cashForm.formState.errors.buildingId && <p className="text-sm text-destructive">{cashForm.formState.errors.buildingId.message}</p>}
                         </div>
                         <div className="space-y-2">
@@ -317,18 +321,24 @@ export function CashCollectionForm({ isOpen, setIsOpen, collectionToEdit, buildi
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="onlineBuildingId">Building</Label>
-                            <Select onValueChange={(v) => onlineForm.setValue('buildingId', v)} value={onlineForm.watch('buildingId')}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a building" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {buildings?.map((building) => (
-                                    <SelectItem key={building.id} value={building.id}>
-                                        {building.buildingName}
-                                    </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <Controller
+                                name="buildingId"
+                                control={onlineForm.control}
+                                render={({ field }) => (
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select a building" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {buildings?.map((building) => (
+                                            <SelectItem key={building.id} value={building.id}>
+                                                {building.buildingName}
+                                            </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                            />
                             {onlineForm.formState.errors.buildingId && <p className="text-sm text-destructive">{onlineForm.formState.errors.buildingId.message}</p>}
                         </div>
                         <div className="space-y-2">

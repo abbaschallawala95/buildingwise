@@ -45,6 +45,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { CashCollectionForm } from '@/components/cash-collection/CashCollectionForm';
+import { useToast } from '@/hooks/use-toast';
 
 export type CashCollection = {
   id: string;
@@ -64,6 +65,7 @@ export type CashCollection = {
 
 export default function CashCollectionPage() {
   const firestore = useFirestore();
+  const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState<CashCollection | undefined>(undefined);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -110,6 +112,10 @@ export default function CashCollectionPage() {
     if (firestore && collectionToDelete) {
       const docRef = doc(firestore, 'cashCollections', collectionToDelete.id);
       deleteDocumentNonBlocking(docRef);
+      toast({
+        title: 'Success',
+        description: 'Collection record deleted successfully.',
+      });
       setDeleteDialogOpen(false);
       setCollectionToDelete(null);
     }
