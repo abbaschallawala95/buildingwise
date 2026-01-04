@@ -46,7 +46,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Show loading spinner while auth is resolving or if navigating to admin and profile is loading
   if (isUserLoading || !user || (pathname === '/admin' && isLoadingCurrentUser)) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-muted/40">
+      <div className="flex items-center justify-center min-h-screen bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
@@ -56,7 +56,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // This prevents the admin page from rendering with incorrect permissions.
   if (pathname === '/admin' && (!currentUserProfile || currentUserProfile.role !== 'admin')) {
      return (
-      <div className="flex items-center justify-center min-h-screen bg-muted/40">
+      <div className="flex items-center justify-center min-h-screen bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <p className="ml-2">Verifying authorization...</p>
       </div>
@@ -68,7 +68,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <AppSidebar />
       <div className="flex flex-col">
         <AppHeader />
-        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-muted/40">
+        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background">
           {children}
         </main>
       </div>
