@@ -73,7 +73,8 @@ export function CashCollectionForm() {
     return denominations.reduce((acc, den) => {
       const key = `d${den}` as keyof CashCollectionFormValues;
       const count = cashDenominationValues[key] || 0;
-      return acc + den * (typeof count === 'number' ? count : 0);
+      // Ensure count is treated as a number
+      return acc + den * (Number(count) || 0);
     }, 0);
   }, [cashDenominationValues]);
 
@@ -103,7 +104,7 @@ export function CashCollectionForm() {
         d1: data.d1 || 0,
       },
       notes: data.notes || '',
-      type: 'cash',
+      type: 'cash' as const,
       createdAt: serverTimestamp(),
     };
 
@@ -119,7 +120,12 @@ export function CashCollectionForm() {
         });
       }
       toast({ title: 'Success!', description: 'Cash collection recorded successfully.' });
-      cashForm.reset({ date: new Date(), buildingId: data.buildingId });
+      cashForm.reset({ 
+          date: new Date(), 
+          buildingId: data.buildingId,
+          notes: '',
+          d500: undefined, d200: undefined, d100: undefined, d50: undefined, d20: undefined, d10: undefined, d5: undefined, d2: undefined, d1: undefined 
+      });
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not record collection.' });
     }
@@ -136,7 +142,7 @@ export function CashCollectionForm() {
       paymentMode: data.paymentMode,
       transactionId: data.transactionId,
       notes: data.notes || '',
-      type: 'online',
+      type: 'online' as const,
       createdAt: serverTimestamp(),
     };
     
@@ -152,7 +158,14 @@ export function CashCollectionForm() {
             });
         }
         toast({ title: "Success!", description: "Online transaction recorded successfully." });
-        onlineForm.reset({ date: new Date(), buildingId: data.buildingId });
+        onlineForm.reset({ 
+            date: new Date(),
+            buildingId: data.buildingId,
+            amount: undefined,
+            paymentMode: '',
+            transactionId: '',
+            notes: ''
+        });
     } catch (error) {
         toast({ variant: "destructive", title: "Error", description: "Could not record transaction." });
     }
