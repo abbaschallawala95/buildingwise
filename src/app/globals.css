@@ -4,75 +4,75 @@
 
 @layer base {
   :root {
-    --background: 30 20% 90%; /* #EADFD9 - Lighter Grain */
-    --foreground: 348 37% 20%; /* #4F2029 - Darker Oxblood for text */
+    --background: 210 40% 98%; /* #F9FAFB */
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 198 93% 42%; /* #0784B5 - Bright Cerulean */
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
     
-    --card: 30 20% 85%; /* #E0D5CF - Grain */
-    --card-foreground: 348 37% 20%;
-
-    --popover: 30 20% 85%;
-    --popover-foreground: 348 37% 20%;
-
-    --primary: 348 37% 33%; /* #76323F - Oxblood */
-    --primary-foreground: 30 20% 95%;
-
-    --secondary: 30 29% 63%; /* #C09F80 - Tan */
-    --secondary-foreground: 348 37% 20%;
-
-    --muted: 30 20% 80%;
-    --muted-foreground: 348 37% 25%;
-    
-    --accent: 30 29% 70%; /* Lighter Tan for hover */
-    --accent-foreground: 348 37% 15%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
 
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive-foreground: 210 40% 98%;
 
-    --border: 0 0% 45%; /* #737373 - Based on Blackboard */
-    --input: 30 20% 88%;
-    --ring: 348 37% 33%; /* Oxblood */
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 198 93% 42%;
 
-    --chart-1: 348 37% 33%; /* Oxblood */
-    --chart-2: 30 29% 63%;  /* Tan */
-    --chart-3: 0 0% 45%;    /* Blackboard */
-    --chart-4: 348 25% 50%;
-    --chart-5: 30 20% 70%;
+    --chart-1: 198 93% 42%;
+    --chart-2: 215 28% 17%;
+    --chart-3: 30 50% 98%;
+    --chart-4: 210 40% 96.1%;
+    --chart-5: 220 15% 50%;
   }
 
   .dark {
-    --background: 0 0% 15%; /* #262626 */
-    --foreground: 30 20% 85%; /* #E0D5CF - Grain */
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
 
-    --card: 0 0% 21%; /* #363636 - Blackboard */
-    --card-foreground: 30 20% 85%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 0 0% 21%;
-    --popover-foreground: 30 20% 85%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
 
-    --primary: 348 40% 55%; /* #B95F70 - Lighter Oxblood */
-    --primary-foreground: 0 0% 10%;
+    --primary: 198 85% 55%;
+    --primary-foreground: 222.2 47.4% 11.2%;
 
-    --secondary: 30 29% 45%; /* #9C7859 - Darker Tan */
-    --secondary-foreground: 30 20% 95%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 0 0% 25%;
-    --muted-foreground: 30 20% 75%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 30 29% 35%;
-    --accent-foreground: 30 20% 95%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
 
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive-foreground: 210 40% 98%;
 
-    --border: 0 0% 30%;
-    --input: 0 0% 25%;
-    --ring: 348 40% 55%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 198 85% 55%;
     
-    --chart-1: 348 40% 55%; /* Lighter Oxblood */
-    --chart-2: 30 29% 45%;  /* Darker Tan */
-    --chart-3: 30 20% 85%;  /* Grain */
-    --chart-4: 348 30% 70%;
-    --chart-5: 30 20% 60%;
+    --chart-1: 198 85% 55%;
+    --chart-2: 210 40% 98%;
+    --chart-3: 217.2 32.6% 17.5%;
+    --chart-4: 215 20.2% 65.1%;
+    --chart-5: 210 30% 40%;
   }
 }
 
