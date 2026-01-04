@@ -104,6 +104,14 @@ service cloud.firestore {
     }
 
     /**
+     * @description Controls access to cash collection records. Any authenticated user can manage them.
+     */
+    match /cashCollections/{collectionId} {
+        allow read, write: if isSignedIn();
+    }
+
+
+    /**
      * @description Controls access to building documents. Any authenticated user can manage buildings.
      * @path /buildings/{buildingId}
      * @allow (create) An authenticated user creating a new building: `create /buildings/bldg_123`.
@@ -196,3 +204,5 @@ service cloud.firestore {
     }
   }
 }
+
+    

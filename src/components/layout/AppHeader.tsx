@@ -18,6 +18,7 @@ import {
   LogOut,
   History,
   ShieldCheck,
+  CircleDollarSign,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
@@ -47,6 +48,7 @@ const navLinks = [
     { href: "/buildings", label: "Buildings", icon: Building2 },
     { href: "/members", label: "Members", icon: Users },
     { href: "/maintenance", label: "Maintenance", icon: Wrench },
+    { href: "/cash-collection", label: "Cash Collection", icon: CircleDollarSign },
     { href: "/transactions", label: "Transactions", icon: ArrowRightLeft },
     { href: "/extra-collections", label: "Extra Collections", icon: PlusCircle },
     { href: "/expenses", label: "Expenses", icon: CreditCard },
@@ -220,3 +222,5 @@ export function AppHeader() {
     </header>
   );
 }
+
+    
