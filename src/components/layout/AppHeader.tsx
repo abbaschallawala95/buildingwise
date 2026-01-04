@@ -48,7 +48,7 @@ const navLinks = [
     { href: "/buildings", label: "Buildings", icon: Building2 },
     { href: "/members", label: "Members", icon: Users },
     { href: "/maintenance", label: "Maintenance", icon: Wrench },
-    { href: "/cash-collection", label: "Cash Collection", icon: CircleDollarSign },
+    { href: "/cash-collection", label: "Cash & Online Collection", icon: CircleDollarSign },
     { href: "/transactions", label: "Transactions", icon: ArrowRightLeft },
     { href: "/extra-collections", label: "Extra Collections", icon: PlusCircle },
     { href: "/expenses", label: "Expenses", icon: CreditCard },
@@ -217,7 +217,7 @@ export function AppHeader() {
   }
 
   return (
-    <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
+    <header className="flex h-14 items-center gap-4 border-b bg-background px-4 lg:h-[60px] lg:px-6">
       <HeaderContent />
     </header>
   );

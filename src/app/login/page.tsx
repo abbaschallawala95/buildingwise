@@ -159,15 +159,15 @@ export default function LoginPage() {
   
   if (isInitializing) {
      return (
-       <div className="flex items-center justify-center min-h-screen bg-background">
+       <div className="flex items-center justify-center min-h-screen bg-muted/40">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     )
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background p-4">
-      <Card className="mx-auto max-w-sm w-full">
+    <div className="flex items-center justify-center min-h-screen bg-muted/40 p-4">
+      <Card className="mx-auto max-w-sm w-full shadow-xl">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-2">
             <Logo />

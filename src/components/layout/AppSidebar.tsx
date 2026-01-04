@@ -39,7 +39,7 @@ const navLinks = [
   { href: '/buildings', label: 'Buildings', icon: Building2 },
   { href: '/members', label: 'Members', icon: Users, collection: 'members' },
   { href: '/maintenance', label: 'Maintenance', icon: Wrench },
-  { href: '/cash-collection', label: 'Cash Collection', icon: CircleDollarSign },
+  { href: '/cash-collection', label: 'Cash & Online Collection', icon: CircleDollarSign },
   { href: '/transactions', label: 'Transactions', icon: ArrowRightLeft },
   { href: '/extra-collections', label: 'Extra Collections', icon: PlusCircle },
   { href: '/expenses', label: 'Expenses', icon: CreditCard },
@@ -75,7 +75,7 @@ export function AppSidebar() {
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileDoc);
 
   return (
-    <div className="hidden border-r bg-card lg:block">
+    <div className="hidden border-r bg-background lg:block">
       <div className="flex h-full max-h-screen flex-col gap-2">
         <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
           <Link
