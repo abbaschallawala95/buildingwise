@@ -8,6 +8,7 @@ import { Loader2 } from 'lucide-react';
 import { doc } from 'firebase/firestore';
 import type { UserProfile } from './profile/page';
 import { useToast } from '@/hooks/use-toast';
+import React from 'react';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -21,6 +22,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     [firestore, user]
   );
   const { data: currentUserProfile, isLoading: isLoadingCurrentUser } = useDoc<UserProfile>(currentUserProfileDoc);
+  const isUserAdmin = currentUserProfile?.role === 'admin';
 
   useEffect(() => {
     // 1. Handle user authentication loading and unauthenticated state
@@ -44,9 +46,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
 
   // Show loading spinner while auth is resolving or if navigating to admin and profile is loading
-  if (isUserLoading || !user || (pathname === '/admin' && isLoadingCurrentUser)) {
+  if (isUserLoading || !user || isLoadingCurrentUser) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-muted/30">
+      <div className="flex items-center justify-center min-h-screen bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
@@ -56,7 +58,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // This prevents the admin page from rendering with incorrect permissions.
   if (pathname === '/admin' && (!currentUserProfile || currentUserProfile.role !== 'admin')) {
      return (
-      <div className="flex items-center justify-center min-h-screen bg-muted/30">
+      <div className="flex items-center justify-center min-h-screen bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <p className="ml-2">Verifying authorization...</p>
       </div>
@@ -65,11 +67,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen w-full lg:grid lg:grid-cols-[280px_1fr]">
-      <AppSidebar />
+      <AppSidebar isUserAdmin={isUserAdmin} />
       <div className="flex flex-col">
         <AppHeader />
-        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-muted/30">
-          {children}
+        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background">
+          {React.Children.map(children, child => {
+              if (React.isValidElement(child)) {
+                // @ts-ignore
+                return React.cloneElement(child, { isUserAdmin });
+              }
+              return child;
+            })}
         </main>
       </div>
     </div>

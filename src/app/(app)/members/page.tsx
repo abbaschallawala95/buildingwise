@@ -46,7 +46,11 @@ export type Member = {
   createdAt?: any;
 };
 
-export default function MembersPage() {
+interface MembersPageProps {
+  isUserAdmin?: boolean;
+}
+
+export default function MembersPage({ isUserAdmin }: MembersPageProps) {
   const firestore = useFirestore();
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
 
@@ -167,12 +171,14 @@ export default function MembersPage() {
   return (
     <>
       <PageHeader title="Members">
-        <Button size="sm" className="gap-1" onClick={handleAdd}>
-          <PlusCircle className="h-3.5 w-3.5" />
-          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-            Add Member
-          </span>
-        </Button>
+        {isUserAdmin && (
+          <Button size="sm" className="gap-1" onClick={handleAdd}>
+            <PlusCircle className="h-3.5 w-3.5" />
+            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+              Add Member
+            </span>
+          </Button>
+        )}
       </PageHeader>
       <Card>
         <CardHeader>
@@ -190,9 +196,11 @@ export default function MembersPage() {
                 <TableHead>Flat</TableHead>
                 <TableHead>Maintenance</TableHead>
                 <TableHead>Dues</TableHead>
-                <TableHead>
-                  <span className="sr-only">Actions</span>
-                </TableHead>
+                {isUserAdmin && (
+                  <TableHead>
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -204,12 +212,12 @@ export default function MembersPage() {
                     <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
-                    <TableCell><Skeleton className="h-9 w-[50px]" /></TableCell>
+                    {isUserAdmin && <TableCell><Skeleton className="h-9 w-[50px]" /></TableCell>}
                   </TableRow>
                 ))}
               {error && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-destructive">
+                  <TableCell colSpan={isUserAdmin ? 6 : 5} className="text-center text-destructive">
                     Error loading members: {error.message}
                   </TableCell>
                 </TableRow>
@@ -229,19 +237,21 @@ export default function MembersPage() {
                           {formatCurrency(totalDues)}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                            <EditMember member={member} buildings={buildings || []} />
-                            <DeleteMember member={member} />
-                        </div>
-                      </TableCell>
+                      {isUserAdmin && (
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                              <EditMember member={member} buildings={buildings || []} />
+                              <DeleteMember member={member} />
+                          </div>
+                        </TableCell>
+                      )}
                     </TableRow>
                   );
                 })}
               {!isLoading && !error && sortedMembers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
-                    No members found. Click &quot;Add Member&quot; to get started.
+                  <TableCell colSpan={isUserAdmin ? 6 : 5} className="text-center text-muted-foreground">
+                    No members found. {isUserAdmin && `Click "Add Member" to get started.`}
                   </TableCell>
                 </TableRow>
               )}

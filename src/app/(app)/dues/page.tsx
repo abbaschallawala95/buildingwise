@@ -62,7 +62,11 @@ export type Due = {
   createdAt?: any;
 };
 
-export default function DuesPage() {
+interface DuesPageProps {
+  isUserAdmin?: boolean;
+}
+
+export default function DuesPage({ isUserAdmin }: DuesPageProps) {
   const firestore = useFirestore();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDue, setSelectedDue] = useState<Due | undefined>(undefined);
@@ -154,12 +158,14 @@ export default function DuesPage() {
   return (
     <>
       <PageHeader title="Dues">
-        <Button size="sm" className="gap-1" onClick={handleAdd}>
-          <PlusCircle className="h-3.5 w-3.5" />
-          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-            New Due
-          </span>
-        </Button>
+        {isUserAdmin && (
+          <Button size="sm" className="gap-1" onClick={handleAdd}>
+            <PlusCircle className="h-3.5 w-3.5" />
+            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+              New Due
+            </span>
+          </Button>
+        )}
       </PageHeader>
       <Card>
         <CardHeader>
@@ -180,7 +186,7 @@ export default function DuesPage() {
                 <TableHead>Title</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
-                <TableHead><span className="sr-only">Actions</span></TableHead>
+                {isUserAdmin && <TableHead><span className="sr-only">Actions</span></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -195,12 +201,12 @@ export default function DuesPage() {
                     <TableCell><Skeleton className="h-4 w-[200px]" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-[70px]" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-[100px] ml-auto" /></TableCell>
-                    <TableCell><Skeleton className="h-9 w-[50px] ml-auto" /></TableCell>
+                    {isUserAdmin && <TableCell><Skeleton className="h-9 w-[50px] ml-auto" /></TableCell>}
                   </TableRow>
                 ))}
               {error && (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-destructive">
+                  <TableCell colSpan={isUserAdmin ? 9 : 8} className="text-center text-destructive">
                     Error loading dues: {error.message}
                   </TableCell>
                 </TableRow>
@@ -223,27 +229,29 @@ export default function DuesPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">{formatCurrency(due.amount)}</TableCell>
-                     <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button aria-haspopup="true" size="icon" variant="ghost">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => handleEdit(due)}>Edit</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openDeleteDialog(due)} className="text-destructive">Delete</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+                    {isUserAdmin && (
+                       <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button aria-haspopup="true" size="icon" variant="ghost">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Toggle menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => handleEdit(due)}>Edit</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openDeleteDialog(due)} className="text-destructive">Delete</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               {!isLoading && !error && sortedDues.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground">
-                    No dues found. Click "New Due" to get started.
+                  <TableCell colSpan={isUserAdmin ? 9 : 8} className="text-center text-muted-foreground">
+                    No dues found. {isUserAdmin && `Click "New Due" to get started.`}
                   </TableCell>
                 </TableRow>
               )}

@@ -29,7 +29,11 @@ export type ExtraCollection = {
   paidMembers: string[];
 }
 
-export default function ExtraCollectionsPage() {
+interface ExtraCollectionsPageProps {
+  isUserAdmin?: boolean;
+}
+
+export default function ExtraCollectionsPage({ isUserAdmin }: ExtraCollectionsPageProps) {
   const firestore = useFirestore();
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -99,12 +103,14 @@ export default function ExtraCollectionsPage() {
   return (
     <>
       <PageHeader title="Extra Collections">
-        <Button size="sm" className="gap-1" onClick={handleAdd}>
-          <PlusCircle className="h-3.5 w-3.5" />
-          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-            New Collection
-          </span>
-        </Button>
+        {isUserAdmin && (
+          <Button size="sm" className="gap-1" onClick={handleAdd}>
+            <PlusCircle className="h-3.5 w-3.5" />
+            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+              New Collection
+            </span>
+          </Button>
+        )}
       </PageHeader>
        {isLoading && (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -162,7 +168,7 @@ export default function ExtraCollectionsPage() {
                 })
             ) : (
                 <div className="col-span-full text-center py-12 text-muted-foreground">
-                    No extra collections found. Click "New Collection" to get started.
+                    No extra collections found. {isUserAdmin && `Click "New Collection" to get started.`}
                 </div>
             )}
         </div>

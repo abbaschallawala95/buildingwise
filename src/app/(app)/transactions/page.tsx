@@ -52,7 +52,11 @@ export type Transaction = {
   createdAt: any; // Firestore Timestamp
 };
 
-export default function TransactionsPage() {
+interface TransactionsPageProps {
+  isUserAdmin?: boolean;
+}
+
+export default function TransactionsPage({ isUserAdmin }: TransactionsPageProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
 
@@ -193,8 +197,8 @@ export default function TransactionsPage() {
                                 <Download className="mr-2 h-4 w-4" />
                                 Download Receipt
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DeleteTransactionDialog transaction={tx} />
+                            {isUserAdmin && <DropdownMenuSeparator />}
+                            {isUserAdmin && <DeleteTransactionDialog transaction={tx} />}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -215,5 +219,3 @@ export default function TransactionsPage() {
     </>
   );
 }
-
-    

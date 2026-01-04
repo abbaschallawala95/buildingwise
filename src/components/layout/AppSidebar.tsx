@@ -45,7 +45,7 @@ const navLinks = [
   { href: '/expenses', label: 'Expenses', icon: CreditCard },
   { href: '/dues', label: 'Dues', icon: ListX },
   { href: '/reports', label: 'Reports', icon: BookText },
-  { href: '/logs', label: 'Logs', icon: History },
+  { href: '/logs', label: 'Logs', icon: History, adminOnly: true },
   { href: '/admin', label: 'Admin', icon: ShieldCheck, adminOnly: true },
   { href: "/settings", label: "Settings" , icon: Settings, subMenu: [
       { href: "/expense-types", label: "Expense Types", icon: Settings },
@@ -53,7 +53,7 @@ const navLinks = [
   ]},
 ];
 
-export function AppSidebar() {
+export function AppSidebar({ isUserAdmin }: { isUserAdmin?: boolean }) {
   const pathname = usePathname();
   const firestore = useFirestore();
   const { user } = useUser();
@@ -67,12 +67,6 @@ export function AppSidebar() {
   const { data: members, isLoading: isLoadingMembers } = useCollection<Member>(membersCollectionGroup);
   
   const memberCount = members?.length || 0;
-
-  const userProfileDoc = useMemoFirebase(
-    () => (firestore && user ? doc(firestore, 'users', user.uid) : null),
-    [firestore, user]
-  );
-  const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileDoc);
 
   return (
     <div className="hidden border-r bg-card lg:block">
@@ -88,11 +82,12 @@ export function AppSidebar() {
         <div className="flex-1 overflow-auto py-2">
           <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
             {navLinks.map((link) => {
-              if (link.adminOnly && userProfile?.role !== 'admin') {
+              if (link.adminOnly && !isUserAdmin) {
                 return null;
               }
 
               if (link.subMenu) {
+                if (!isUserAdmin) return null;
                 return (
                     <Collapsible key={link.href} open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
                         <CollapsibleTrigger asChild>
@@ -166,5 +161,3 @@ export function AppSidebar() {
     </div>
   );
 }
-
-    

@@ -50,7 +50,11 @@ type MaintenanceFormValues = z.infer<typeof maintenanceSchema>;
 
 type ReceiptData = Omit<Transaction, 'month' | 'paymentDate'> & { month: string, paymentDate: any }; // month is string
 
-export function MaintenanceForm() {
+interface MaintenanceFormProps {
+  isUserAdmin?: boolean;
+}
+
+export function MaintenanceForm({ isUserAdmin }: MaintenanceFormProps) {
   const firestore = useFirestore();
   const auth = useAuth();
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
@@ -210,6 +214,22 @@ export function MaintenanceForm() {
       setIsGenerating(false);
     }
   };
+
+  if (!isUserAdmin) {
+    return (
+      <Card className="max-w-2xl mx-auto">
+        <CardHeader>
+          <CardTitle>Access Denied</CardTitle>
+          <CardDescription>
+            You do not have permission to record maintenance payments.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p>Please contact an administrator if you believe this is an error.</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (receiptData) {
     return (

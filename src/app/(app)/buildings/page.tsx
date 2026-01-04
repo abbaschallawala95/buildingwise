@@ -38,7 +38,11 @@ export type Building = {
   createdAt?: any;
 };
 
-export default function BuildingsPage() {
+interface BuildingsPageProps {
+  isUserAdmin?: boolean;
+}
+
+export default function BuildingsPage({ isUserAdmin }: BuildingsPageProps) {
   const firestore = useFirestore();
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
 
@@ -80,12 +84,14 @@ export default function BuildingsPage() {
   return (
     <>
       <PageHeader title="Buildings">
-        <Button size="sm" className="gap-1" onClick={handleAdd}>
-          <PlusCircle className="h-3.5 w-3.5" />
-          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-            Add Building
-          </span>
-        </Button>
+        {isUserAdmin && (
+          <Button size="sm" className="gap-1" onClick={handleAdd}>
+            <PlusCircle className="h-3.5 w-3.5" />
+            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+              Add Building
+            </span>
+          </Button>
+        )}
       </PageHeader>
       <Card>
         <CardHeader>
@@ -99,9 +105,11 @@ export default function BuildingsPage() {
                 <TableHead>Building Name</TableHead>
                 <TableHead>Address</TableHead>
                 <TableHead>Opening Balance</TableHead>
-                <TableHead>
-                  <span className="sr-only">Actions</span>
-                </TableHead>
+                {isUserAdmin && (
+                  <TableHead>
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -117,9 +125,11 @@ export default function BuildingsPage() {
                     <TableCell>
                       <Skeleton className="h-4 w-[100px]" />
                     </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-9 w-[100px] ml-auto" />
-                    </TableCell>
+                    {isUserAdmin && (
+                      <TableCell>
+                        <Skeleton className="h-9 w-[100px] ml-auto" />
+                      </TableCell>
+                    )}
                   </TableRow>
                    <TableRow>
                     <TableCell>
@@ -131,15 +141,17 @@ export default function BuildingsPage() {
                     <TableCell>
                       <Skeleton className="h-4 w-[100px]" />
                     </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-9 w-[100px] ml-auto" />
-                    </TableCell>
+                    {isUserAdmin && (
+                      <TableCell>
+                        <Skeleton className="h-9 w-[100px] ml-auto" />
+                      </TableCell>
+                    )}
                   </TableRow>
                 </>
               )}
               {error && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-destructive">
+                  <TableCell colSpan={isUserAdmin ? 4 : 3} className="text-center text-destructive">
                     Error loading buildings: {error.message}
                   </TableCell>
                 </TableRow>
@@ -151,18 +163,20 @@ export default function BuildingsPage() {
                     <TableCell className="font-medium">{building.buildingName}</TableCell>
                     <TableCell>{building.address}</TableCell>
                     <TableCell>{formatCurrency(building.openingBalance || 0)}</TableCell>
-                    <TableCell className="text-right">
-                       <div className="flex items-center justify-end gap-2">
-                            <EditBuilding building={building} />
-                            <DeleteBuildingDialog building={building} />
-                        </div>
-                    </TableCell>
+                    {isUserAdmin && (
+                      <TableCell className="text-right">
+                         <div className="flex items-center justify-end gap-2">
+                              <EditBuilding building={building} />
+                              <DeleteBuildingDialog building={building} />
+                          </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               {!isLoading && !error && sortedBuildings?.length === 0 && (
                  <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground">
-                        No buildings found. Click &quot;Add Building&quot; to get started.
+                    <TableCell colSpan={isUserAdmin ? 4 : 3} className="text-center text-muted-foreground">
+                        No buildings found. {isUserAdmin && `Click "Add Building" to get started.`}
                     </TableCell>
                  </TableRow>
               )}

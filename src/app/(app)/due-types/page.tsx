@@ -33,7 +33,11 @@ export type DueType = {
   createdAt?: any;
 };
 
-export default function DueTypesPage() {
+interface DueTypesPageProps {
+  isUserAdmin?: boolean;
+}
+
+export default function DueTypesPage({ isUserAdmin }: DueTypesPageProps) {
   const firestore = useFirestore();
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
 
@@ -66,12 +70,14 @@ export default function DueTypesPage() {
   return (
     <>
       <PageHeader title="Due Types">
-        <Button size="sm" className="gap-1" onClick={handleAdd}>
-          <PlusCircle className="h-3.5 w-3.5" />
-          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-            Add Type
-          </span>
-        </Button>
+        {isUserAdmin && (
+          <Button size="sm" className="gap-1" onClick={handleAdd}>
+            <PlusCircle className="h-3.5 w-3.5" />
+            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+              Add Type
+            </span>
+          </Button>
+        )}
       </PageHeader>
       <Card>
         <CardHeader>
@@ -85,9 +91,11 @@ export default function DueTypesPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Category Name</TableHead>
-                <TableHead>
-                  <span className="sr-only">Actions</span>
-                </TableHead>
+                {isUserAdmin && (
+                  <TableHead>
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -97,23 +105,27 @@ export default function DueTypesPage() {
                     <TableCell>
                       <Skeleton className="h-4 w-[250px]" />
                     </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-9 w-[100px] ml-auto" />
-                    </TableCell>
+                    {isUserAdmin && (
+                      <TableCell>
+                        <Skeleton className="h-9 w-[100px] ml-auto" />
+                      </TableCell>
+                    )}
                   </TableRow>
                   <TableRow>
                     <TableCell>
                       <Skeleton className="h-4 w-[200px]" />
                     </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-9 w-[100px] ml-auto" />
-                    </TableCell>
+                    {isUserAdmin && (
+                      <TableCell>
+                        <Skeleton className="h-9 w-[100px] ml-auto" />
+                      </TableCell>
+                    )}
                   </TableRow>
                 </>
               )}
               {error && (
                 <TableRow>
-                  <TableCell colSpan={2} className="text-center text-destructive">
+                  <TableCell colSpan={isUserAdmin ? 2 : 1} className="text-center text-destructive">
                     Error loading due types: {error.message}
                   </TableCell>
                 </TableRow>
@@ -123,18 +135,20 @@ export default function DueTypesPage() {
                 sortedDueTypes.map((type) => (
                   <TableRow key={type.id}>
                     <TableCell className="font-medium">{type.name}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <EditDueType dueType={type} />
-                        <DeleteDueTypeDialog dueType={type} />
-                      </div>
-                    </TableCell>
+                    {isUserAdmin && (
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <EditDueType dueType={type} />
+                          <DeleteDueTypeDialog dueType={type} />
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               {!isLoading && !error && sortedDueTypes?.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={2} className="text-center text-muted-foreground">
-                    No due types found. Click "Add Type" to get started.
+                  <TableCell colSpan={isUserAdmin ? 2 : 1} className="text-center text-muted-foreground">
+                    No due types found. {isUserAdmin && `Click "Add Type" to get started.`}
                   </TableCell>
                 </TableRow>
               )}

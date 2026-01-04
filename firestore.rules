@@ -46,7 +46,7 @@ service cloud.firestore {
     
     // Checks if the requesting user is an admin
     function isAdmin() {
-        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     // Combines ownership and existence checks for state-changing operations on existing docs
@@ -65,10 +65,10 @@ service cloud.firestore {
      */
     match /users/{userId} {
       allow get: if isSignedIn();
-      allow list: if isSignedIn() && isAdmin();
+      allow list: if isAdmin();
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if (isExistingOwner(userId) || isAdmin()) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
     }
     
     /**
@@ -79,9 +79,8 @@ service cloud.firestore {
      * @deny (update, delete) Logs are immutable.
      */
     match /logs/{logId} {
-        allow get: if isSignedIn();
-        allow list: if isSignedIn();
-        allow create: if isSignedIn();
+        allow get, list: if isSignedIn();
+        allow create: if isAdmin();
         allow update, delete: if false;
     }
     
@@ -107,7 +106,8 @@ service cloud.firestore {
      * @description Controls access to cash collection records. Any authenticated user can manage them.
      */
     match /cashCollections/{collectionId} {
-        allow read, write: if isSignedIn();
+        allow get, list: if isSignedIn();
+        allow create, update, delete: if isAdmin();
     }
 
 
@@ -121,11 +121,10 @@ service cloud.firestore {
      * @principle Enforces that only authenticated users (admins) can manage system data.
      */
     match /buildings/{buildingId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && isExistingDoc();
-      allow delete: if isSignedIn() && isExistingDoc();
+      allow get, list: if isSignedIn();
+      allow create: if isAdmin();
+      allow update: if isAdmin() && isExistingDoc();
+      allow delete: if isAdmin() && isExistingDoc();
 
       /**
        * @description Controls access to building member documents.
@@ -137,11 +136,10 @@ service cloud.firestore {
        * @principle Validates relational integrity between parent and child documents.
        */
       match /members/{memberId} {
-        allow get: if isSignedIn();
-        allow list: if isSignedIn();
-        allow create: if isSignedIn() && request.resource.data.buildingId == buildingId;
-        allow update: if isSignedIn() && isExistingDoc() && request.resource.data.buildingId == resource.data.buildingId;
-        allow delete: if isSignedIn() && isExistingDoc();
+        allow get, list: if isSignedIn();
+        allow create: if isAdmin() && request.resource.data.buildingId == buildingId;
+        allow update: if isAdmin() && isExistingDoc() && request.resource.data.buildingId == resource.data.buildingId;
+        allow delete: if isAdmin() && isExistingDoc();
       }
 
       /**
@@ -154,11 +152,10 @@ service cloud.firestore {
        * @principle Validates relational integrity between parent and child documents.
        */
       match /transactions/{transactionId} {
-        allow get: if isSignedIn();
-        allow list: if isSignedIn();
-        allow create: if isSignedIn() && request.resource.data.buildingId == buildingId;
-        allow update: if isSignedIn() && isExistingDoc() && request.resource.data.buildingId == resource.data.buildingId;
-        allow delete: if isSignedIn() && isExistingDoc();
+        allow get, list: if isSignedIn();
+        allow create: if isAdmin() && request.resource.data.buildingId == buildingId;
+        allow update: if isAdmin() && isExistingDoc() && request.resource.data.buildingId == resource.data.buildingId;
+        allow delete: if isAdmin() && isExistingDoc();
       }
 
       /**
@@ -171,25 +168,26 @@ service cloud.firestore {
        * @principle Validates relational integrity between parent and child documents.
        */
       match /expenses/{expenseId} {
-        allow get: if isSignedIn();
-        allow list: if isSignedIn();
-        allow create: if isSignedIn() && request.resource.data.buildingId == buildingId;
-        allow update: if isSignedIn() && isExistingDoc() && request.resource.data.buildingId == resource.data.buildingId;
-        allow delete: if isSignedIn() && isExistingDoc();
+        allow get, list: if isSignedIn();
+        allow create: if isAdmin() && request.resource.data.buildingId == buildingId;
+        allow update: if isAdmin() && isExistingDoc() && request.resource.data.buildingId == resource.data.buildingId;
+        allow delete: if isAdmin() && isExistingDoc();
       }
       
        /**
        * @description Controls access to extra collection documents.
        */
       match /extraCollections/{extraCollectionId} {
-          allow get, list, create, update, delete: if isSignedIn();
+          allow get, list: if isSignedIn();
+          allow create, update, delete: if isAdmin();
       }
       
       /**
        * @description Controls access to due documents.
        */
        match /dues/{dueId} {
-           allow get, list, create, update, delete: if isSignedIn();
+           allow get, list: if isSignedIn();
+           allow create, update, delete: if isAdmin();
        }
     }
     
@@ -197,12 +195,12 @@ service cloud.firestore {
      * @description Controls access to expense and due types.
      */
     match /expenseTypes/{expenseTypeId} {
-      allow get, list, create, update, delete: if isSignedIn();
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
     }
     match /dueTypes/{dueTypeId} {
-        allow get, list, create, update, delete: if isSignedIn();
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
     }
   }
 }
-
-    
