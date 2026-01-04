@@ -142,7 +142,7 @@ export default function ReportsPage() {
     }
 
     return { totalIncome, totalExpenses, netBalance };
-  }, [filteredData]);
+  }, [filteredData, monthFilter]);
   
 
   const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(amount);

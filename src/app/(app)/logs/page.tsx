@@ -23,8 +23,8 @@ import { PageHeader } from '@/components/PageHeader';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import type { UserProfile } from 'firebase/auth';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import type { UserProfile } from '@/app/(app)/profile/page';
 
 export type Log = {
   id: string;

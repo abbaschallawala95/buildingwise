@@ -5,7 +5,7 @@ import { useForm, type SubmitHandler, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { doc } from 'firebase/firestore';
-import { useFirestore, updateDocumentNonBlocking } from '@/firebase';
+import { useFirestore, updateDocumentNonBlocking, useAuth } from '@/firebase';
 
 import {
   Dialog,
@@ -29,6 +29,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import type { UserProfile } from '@/app/(app)/profile/page';
 import { createUser } from '@/ai/flows/create-user-flow';
+import { createLog } from '@/lib/logger';
 
 const userFormSchema = z.object({
   fullName: z.string().min(3, 'Full name must be at least 3 characters.'),
@@ -54,6 +55,7 @@ interface UserFormProps {
 
 export function UserForm({ isOpen, setIsOpen, userToEdit }: UserFormProps) {
   const firestore = useFirestore();
+  const auth = useAuth();
   const { toast } = useToast();
   
   const isEditing = !!userToEdit;
@@ -70,7 +72,7 @@ export function UserForm({ isOpen, setIsOpen, userToEdit }: UserFormProps) {
       fullName: '',
       email: '',
       password: '',
-      role: undefined,
+      role: 'user' as 'user' | 'admin',
     }
   });
 
@@ -87,7 +89,7 @@ export function UserForm({ isOpen, setIsOpen, userToEdit }: UserFormProps) {
           fullName: '',
           email: '',
           password: '',
-          role: undefined,
+          role: 'user',
         });
       }
     }
@@ -103,6 +105,13 @@ export function UserForm({ isOpen, setIsOpen, userToEdit }: UserFormProps) {
             role: data.role,
         });
 
+        createLog(firestore, auth, {
+          action: 'updated',
+          entityType: 'User',
+          entityId: userToEdit.id,
+          description: `Updated user role for ${data.fullName} to ${data.role}`,
+        });
+
         toast({
             title: 'User Updated',
             description: `${data.fullName}'s details have been updated.`,
@@ -112,11 +121,16 @@ export function UserForm({ isOpen, setIsOpen, userToEdit }: UserFormProps) {
       // Add logic
       if (!data.email || !data.password) return;
       try {
-        await createUser({
+        const newUser = await createUser({
           email: data.email,
           password: data.password,
           fullName: data.fullName,
         });
+
+        if (data.role === 'admin' && firestore) {
+           const userDocRef = doc(firestore, 'users', newUser.uid);
+           updateDocumentNonBlocking(userDocRef, { role: 'admin' });
+        }
         
         toast({
             title: 'User Created',

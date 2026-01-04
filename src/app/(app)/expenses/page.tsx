@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { PlusCircle, MoreHorizontal } from 'lucide-react';
-import { collectionGroup, doc } from 'firebase/firestore';
+import { collection, collectionGroup, doc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { Building } from '@/app/(app)/buildings/page';
@@ -28,7 +28,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -45,8 +44,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { ExpenseForm } from '@/components/expenses/ExpenseForm';
-import { collection } from 'firebase/firestore';
-import type { ExpenseType } from '@/components/expenses/AddExpenseTypeDialog';
+import type { ExpenseType } from '@/app/(app)/expense-types/page';
 
 export type Expense = {
   id: string;
@@ -267,7 +265,7 @@ export default function ExpensesPage({ isUserAdmin }: ExpensesPageProps) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -90,7 +90,11 @@ export default function TransactionsPage({ isUserAdmin }: TransactionsPageProps)
   }, [transactions]);
   
   const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(amount);
+    new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+    }).format(amount);
 
   const formatDate = (date: any) => {
     if (!date) return 'N/A';
