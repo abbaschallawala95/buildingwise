@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -126,12 +127,12 @@ export default function AdminPage() {
   return (
     <>
       <PageHeader title="User Management">
-         <Button size="sm" className="gap-1" onClick={handleAddUser}>
+        {/* <Button size="sm" className="gap-1" onClick={handleAddUser}>
           <PlusCircle className="h-3.5 w-3.5" />
           <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
             Add User
           </span>
-        </Button>
+        </Button> */}
       </PageHeader>
       <Card>
         <CardHeader>
