@@ -50,7 +50,7 @@ export function DeleteUserDialog({ user }: DeleteUserDialogProps) {
         // The user will no longer be able to log in due to the missing Firestore document.
         createLog(firestore, auth, {
             action: 'deleted',
-            entityType: 'Member', // This should be 'User' but keeping as per existing types
+            entityType: 'User',
             entityId: user.id,
             description: `Deleted user: ${user.fullName}`,
         });

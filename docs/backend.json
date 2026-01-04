@@ -491,15 +491,15 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Cash Collection",
       "type": "object",
-      "description": "Represents a cash collection with denomination details.",
+      "description": "Represents a cash or online transaction collection.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the collection."
+          "description": "Unique identifier for the collection record."
         },
         "buildingId": {
           "type": "string",
-          "description": "Reference to Building."
+          "description": "Reference to the Building."
         },
         "collectedBy": {
           "type": "string",
@@ -514,13 +514,18 @@
           "format": "date-time",
           "description": "The date of the collection."
         },
+        "type": {
+          "type": "string",
+          "enum": ["cash", "online"],
+          "description": "The type of collection."
+        },
         "notes": {
           "type": "string",
           "description": "Any additional notes for the collection."
         },
         "denominations": {
           "type": "object",
-          "description": "Count of each cash denomination.",
+          "description": "Count of each cash denomination (for 'cash' type).",
           "properties": {
             "d500": { "type": "number" },
             "d200": { "type": "number" },
@@ -532,6 +537,14 @@
             "d2": { "type": "number" },
             "d1": { "type": "number" }
           }
+        },
+        "paymentMode": {
+            "type": "string",
+            "description": "Mode of payment for 'online' type."
+        },
+        "transactionId": {
+            "type": "string",
+            "description": "Transaction ID for 'online' type."
         }
       },
       "required": [
@@ -539,7 +552,8 @@
         "buildingId",
         "collectedBy",
         "totalAmount",
-        "date"
+        "date",
+        "type"
       ]
     }
   },
@@ -748,5 +762,3 @@
     "reasoning": "The Firestore structure is designed to enable secure and efficient CRUD operations for the BuildingWise application, focusing on authorization independence and clear access control.  The structure follows a hierarchical approach with Buildings at the top level, and Members, Transactions, Dues, and Expenses as subcollections.  This structure aligns with the principle of Path-Based Ownership where each entity is owned by the Building to which it belongs. All subcollections include the `buildingId` as a denormalized field.  This denormalization is CRITICAL for Authorization Independence, as it avoids `get()` calls in security rules to verify building ownership.  The structure supports the required QAPs by segregating data per building, which simplifies list operations (rules are not filters)."
   }
 }
-
-    

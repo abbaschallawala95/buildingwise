@@ -6,7 +6,7 @@ import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { Auth } from "firebase/auth";
 
 type Action = "created" | "updated" | "deleted";
-type EntityType = "Building" | "Member" | "Transaction" | "Expense" | "Due" | "Extra Collection" | "Expense Type" | "Due Type";
+type EntityType = "Building" | "Member" | "Transaction" | "Expense" | "Due" | "Extra Collection" | "Expense Type" | "Due Type" | "User" | "Cash Collection";
 
 interface LogPayload {
     action: Action;

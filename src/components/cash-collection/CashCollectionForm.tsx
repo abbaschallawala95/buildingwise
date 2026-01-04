@@ -115,12 +115,11 @@ export function CashCollectionForm() {
           action: 'created',
           entityType: 'Cash Collection',
           entityId: docRef.id,
-          description: `Logged cash collection of ${totalCashAmount}`,
+          description: `Logged cash collection of ${formatCurrency(totalCashAmount)}`,
         });
       }
       toast({ title: 'Success!', description: 'Cash collection recorded successfully.' });
-      cashForm.reset();
-      cashForm.setValue('date', new Date());
+      cashForm.reset({ date: new Date(), buildingId: data.buildingId });
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not record collection.' });
     }
@@ -149,12 +148,11 @@ export function CashCollectionForm() {
                 action: 'created',
                 entityType: 'Cash Collection',
                 entityId: docRef.id,
-                description: `Logged online transaction of ${data.amount}`,
+                description: `Logged online transaction of ${formatCurrency(data.amount)}`,
             });
         }
         toast({ title: "Success!", description: "Online transaction recorded successfully." });
-        onlineForm.reset();
-        onlineForm.setValue("date", new Date());
+        onlineForm.reset({ date: new Date(), buildingId: data.buildingId });
     } catch (error) {
         toast({ variant: "destructive", title: "Error", description: "Could not record transaction." });
     }
@@ -322,5 +320,3 @@ export function CashCollectionForm() {
     </Tabs>
   );
 }
-
-    
